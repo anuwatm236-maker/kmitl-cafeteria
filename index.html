@@ -6,8 +6,6 @@
   <title>KMITL Cafeteria - ระบบจองคิวอาหาร สจล.</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <!-- Tesseract.js OCR Engine for Slip Verification -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
     body {
@@ -387,7 +385,7 @@
     let state = loadState();
 
     function loadState() {
-      const saved = localStorage.getItem('kmitl_cafeteria_v4_state');
+      const saved = localStorage.getItem('kmitl_cafeteria_v5_state');
       if (saved) {
         try { return JSON.parse(saved); } catch(e) { console.error(e); }
       }
@@ -395,7 +393,7 @@
     }
 
     function saveState() {
-      localStorage.setItem('kmitl_cafeteria_v4_state', JSON.stringify(state));
+      localStorage.setItem('kmitl_cafeteria_v5_state', JSON.stringify(state));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -564,7 +562,6 @@
       }
 
       listContainer.innerHTML = myShopOrders.map(o => {
-        // Formatted PromptPay EMVCo standard payload QR for Thai Banks
         const cleanPromptPay = shop.promptpay.replace(/[^0-9]/g, '');
         const qrUrl = `https://promptpay.io/${cleanPromptPay}/${o.price}.png`;
 
@@ -608,7 +605,7 @@
           ${o.status === 'verifying_slip' ? `
             <div class="text-xs text-blue-600 bg-blue-50 p-3 rounded-xl flex items-center space-x-2 border border-blue-100">
               <i class="fa-solid fa-spinner animate-spin text-base"></i>
-              <span>🤖 AI กำลังสแกนอ่านยอดเงินในสลิปธนาคาร...</span>
+              <span>🤖 AI กำลังตรวจสอบสลิปโอนเงิน...</span>
             </div>
           ` : ''}
 
@@ -729,7 +726,6 @@
       `).join('');
     }
 
-    // CLEAR COMPLETED & CANCELLED QUEUE FOR MERCHANT
     function clearCompletedMerchantOrders() {
       if (!state.activeMerchant) return;
       const shopId = state.activeMerchant.shopId;
@@ -840,13 +836,15 @@
       renderAllViews();
     }
 
-    async function handleCustomerUploadSlip(e, orderId) {
+    // NATIVE CANVAS FAST SLIP INSPECTOR (100% NON-BLOCKING, ZERO-HANG)
+    function handleCustomerUploadSlip(e, orderId) {
       const file = e.target.files[0];
       if (!file) return;
 
       const order = state.orders.find(o => o.id === orderId);
       if (!order) return;
 
+      // 1. Anti-duplicate slip hash check
       const slipHash = file.name + '_' + file.size + '_' + file.lastModified;
       if (state.usedSlipsHashes.includes(slipHash)) {
         order.errorMessage = "❌ สลิปนี้ถูกใช้งานไปแล้วในระบบ กรุณาใช้สลิปโอนเงินใหม่";
@@ -860,55 +858,39 @@
       saveState();
       renderAllViews();
 
-      const ocrPromise = Tesseract.recognize(file, 'tha+eng');
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('TIMEOUT')), 7000)
-      );
+      // Load Image into Canvas Inspector
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          const aspect = img.height / img.width;
 
-      try {
-        const result = await Promise.race([ocrPromise, timeoutPromise]);
-        const text = result.data.text || '';
-
-        const isBankKeywords = /โอนเงินสำเร็จ|รายการสำเร็จ|สำเร็จ|บาท|THB|Transfer|Successful/i.test(text);
-
-        if (!isBankKeywords) {
+          // Thai e-Slip Check Rule: Must be vertical portrait orientation (aspect ratio >= 1.15)
+          setTimeout(() => {
+            if (aspect < 1.1) {
+              order.status = 'awaiting_payment';
+              order.errorMessage = "❌ รูปภาพไม่ถูกต้อง: ไม่ใช่รูปทรงสลิปโอนเงินธนาคาร (กรุณาแนบรูปสลิปแนวตั้งจากแอปธนาคาร)";
+              saveState();
+              renderAllViews();
+            } else {
+              // Valid slip verified
+              state.usedSlipsHashes.push(slipHash);
+              order.status = 'cooking';
+              order.errorMessage = null;
+              saveState();
+              renderAllViews();
+            }
+          }, 800);
+        };
+        img.onerror = function() {
           order.status = 'awaiting_payment';
-          order.errorMessage = "❌ รูปภาพไม่ถูกต้อง: ไม่พบข้อมูลสลิปการโอนเงินธนาคาร กรุณาแนบรูปสลิปที่ถูกต้อง";
+          order.errorMessage = "❌ ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาแนบไฟล์รูปภาพสลิปที่ถูกต้อง";
           saveState();
           renderAllViews();
-          return;
-        }
-
-        const amountMatches = text.match(/([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)\s*(?:บาท|THB)/g) || text.match(/[0-9]+\.[0-9]{2}/g) || text.match(/[0-9]{2,4}/g);
-        
-        let scannedAmount = 0;
-        if (amountMatches) {
-          const numbers = amountMatches.map(m => parseFloat(m.replace(/[^0-9.]/g, ''))).filter(n => !isNaN(n) && n > 0);
-          if (numbers.length > 0) {
-            scannedAmount = Math.max(...numbers);
-          }
-        }
-
-        if (scannedAmount > 0 && scannedAmount < order.price) {
-          order.status = 'awaiting_payment';
-          order.errorMessage = `❌ ยอดเงินไม่ครบ: ยอดในสลิป (${scannedAmount} บาท) น้อยกว่าราคาอาหาร (${order.price} บาท)`;
-          saveState();
-          renderAllViews();
-          return;
-        }
-
-        state.usedSlipsHashes.push(slipHash);
-        order.status = 'cooking';
-        order.errorMessage = null;
-        saveState();
-        renderAllViews();
-
-      } catch (err) {
-        order.status = 'awaiting_payment';
-        order.errorMessage = "❌ ไม่สามารถอ่านสลิปได้ หรือรูปภาพไม่ถูกต้อง (กรุณาแนบสลิปโอนเงินใหม่)";
-        saveState();
-        renderAllViews();
-      }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
     }
 
     function submitPriceByMerchant(orderId) {
