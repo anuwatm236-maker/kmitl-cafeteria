@@ -385,15 +385,29 @@
     let state = loadState();
 
     function loadState() {
-      const saved = localStorage.getItem('kmitl_cafeteria_v5_state');
+      // Clear stuck states across all previous versions automatically
+      const storageKey = 'kmitl_cafeteria_v6_state';
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
-        try { return JSON.parse(saved); } catch(e) { console.error(e); }
+        try { 
+          const parsed = JSON.parse(saved); 
+          if (parsed.orders && Array.isArray(parsed.orders)) {
+            parsed.orders.forEach(o => {
+              // Self-Healing: Reset stuck verifying_slip to awaiting_payment
+              if (o.status === 'verifying_slip') {
+                o.status = 'awaiting_payment';
+                o.errorMessage = "❌ การตรวจสอบสลิปขัดข้อง กรุณาเลือกไฟล์สลิปเพื่อส่งอีกครั้ง";
+              }
+            });
+          }
+          return parsed; 
+        } catch(e) { console.error(e); }
       }
       return defaultState;
     }
 
     function saveState() {
-      localStorage.setItem('kmitl_cafeteria_v5_state', JSON.stringify(state));
+      localStorage.setItem('kmitl_cafeteria_v6_state', JSON.stringify(state));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -605,7 +619,7 @@
           ${o.status === 'verifying_slip' ? `
             <div class="text-xs text-blue-600 bg-blue-50 p-3 rounded-xl flex items-center space-x-2 border border-blue-100">
               <i class="fa-solid fa-spinner animate-spin text-base"></i>
-              <span>🤖 AI กำลังตรวจสอบสลิปโอนเงิน...</span>
+              <span>🤖 กำลังตรวจสอบสลิปโอนเงิน...</span>
             </div>
           ` : ''}
 
@@ -636,7 +650,7 @@
           ` : ''}
 
           ${o.errorMessage ? `
-            <div class="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+            <div class="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200 font-medium">
               ${o.errorMessage}
             </div>
           ` : ''}
@@ -836,7 +850,7 @@
       renderAllViews();
     }
 
-    // NATIVE CANVAS FAST SLIP INSPECTOR (100% NON-BLOCKING, ZERO-HANG)
+    // INSTANT SAFE SLIP PROCESSOR WITH FULL ERROR-RECOVERY
     function handleCustomerUploadSlip(e, orderId) {
       const file = e.target.files[0];
       if (!file) return;
@@ -846,50 +860,52 @@
 
       // 1. Anti-duplicate slip hash check
       const slipHash = file.name + '_' + file.size + '_' + file.lastModified;
+      if (!state.usedSlipsHashes) state.usedSlipsHashes = [];
+
       if (state.usedSlipsHashes.includes(slipHash)) {
+        order.status = 'awaiting_payment';
         order.errorMessage = "❌ สลิปนี้ถูกใช้งานไปแล้วในระบบ กรุณาใช้สลิปโอนเงินใหม่";
         saveState();
         renderAllViews();
         return;
       }
 
-      order.status = 'verifying_slip';
-      order.errorMessage = null;
-      saveState();
-      renderAllViews();
-
-      // Load Image into Canvas Inspector
+      // Read file instantaneously
       const reader = new FileReader();
+      
       reader.onload = function(event) {
-        const img = new Image();
-        img.onload = function() {
-          const aspect = img.height / img.width;
-
-          // Thai e-Slip Check Rule: Must be vertical portrait orientation (aspect ratio >= 1.15)
-          setTimeout(() => {
-            if (aspect < 1.1) {
-              order.status = 'awaiting_payment';
-              order.errorMessage = "❌ รูปภาพไม่ถูกต้อง: ไม่ใช่รูปทรงสลิปโอนเงินธนาคาร (กรุณาแนบรูปสลิปแนวตั้งจากแอปธนาคาร)";
-              saveState();
-              renderAllViews();
-            } else {
-              // Valid slip verified
-              state.usedSlipsHashes.push(slipHash);
-              order.status = 'cooking';
-              order.errorMessage = null;
-              saveState();
-              renderAllViews();
-            }
-          }, 800);
-        };
-        img.onerror = function() {
+        try {
+          const img = new Image();
+          img.onload = function() {
+            // Success: Update state directly to cooking
+            state.usedSlipsHashes.push(slipHash);
+            order.status = 'cooking';
+            order.errorMessage = null;
+            saveState();
+            renderAllViews();
+          };
+          img.onerror = function() {
+            order.status = 'awaiting_payment';
+            order.errorMessage = "❌ ไฟล์รูปภาพชำรุด กรุณาแนบไฟล์รูปสลิปใหม่อีกครั้ง";
+            saveState();
+            renderAllViews();
+          };
+          img.src = event.target.result;
+        } catch (err) {
           order.status = 'awaiting_payment';
-          order.errorMessage = "❌ ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาแนบไฟล์รูปภาพสลิปที่ถูกต้อง";
+          order.errorMessage = "❌ เกิดข้อผิดพลาดในการประเมินไฟล์ กรุณาลองแนบสลิปใหม่อีกครั้ง";
           saveState();
           renderAllViews();
-        };
-        img.src = event.target.result;
+        }
       };
+
+      reader.onerror = function() {
+        order.status = 'awaiting_payment';
+        order.errorMessage = "❌ ไม่สามารถอ่านไฟล์สลิปได้ กรุณาลองแนบใหม่อีกครั้ง";
+        saveState();
+        renderAllViews();
+      };
+
       reader.readAsDataURL(file);
     }
 
