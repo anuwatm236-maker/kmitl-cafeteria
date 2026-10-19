@@ -372,7 +372,7 @@
         { id: 'shop_3', name: 'ร้านน้ำปั่นผลไม้สด', email: 'smoothie@kmitl.ac.th', promptpay: '0865554433', password: '123' }
       ],
       orders: [],
-      usedSlipsHashes: [], // Anti-duplicate slip tracking
+      usedSlipsHashes: [],
       activeMerchant: null,
       currentSelectedShopId: null
     };
@@ -380,7 +380,7 @@
     let state = loadState();
 
     function loadState() {
-      const saved = localStorage.getItem('kmitl_cafeteria_v2_state');
+      const saved = localStorage.getItem('kmitl_cafeteria_v3_state');
       if (saved) {
         try { return JSON.parse(saved); } catch(e) { console.error(e); }
       }
@@ -388,7 +388,7 @@
     }
 
     function saveState() {
-      localStorage.setItem('kmitl_cafeteria_v2_state', JSON.stringify(state));
+      localStorage.setItem('kmitl_cafeteria_v3_state', JSON.stringify(state));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -422,7 +422,6 @@
     function setDeviceView(type) {
       const viewport = document.getElementById('app-viewport');
       const statusBar = document.getElementById('status-bar');
-      const mainContainer = document.getElementById('main-container');
 
       const btns = ['mobile', 'tablet', 'desktop', 'fullscreen'];
       btns.forEach(b => {
@@ -468,7 +467,7 @@
       }
 
       container.innerHTML = state.shops.map(shop => {
-        const pendingCount = state.orders.filter(o => o.shopId === shop.id && o.status !== 'completed').length;
+        const pendingCount = state.orders.filter(o => o.shopId === shop.id && o.status !== 'completed' && o.status !== 'cancelled').length;
         return `
           <div onclick="selectShopForCustomer('${shop.id}')" class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:border-orange-300 transition cursor-pointer flex items-center justify-between">
             <div class="flex items-center space-x-3">
@@ -493,7 +492,7 @@
       if (!container) return;
 
       const myId = getCustomerId();
-      const myOrders = state.orders.filter(o => o.customerId === myId && o.status !== 'completed');
+      const myOrders = state.orders.filter(o => o.customerId === myId && o.status !== 'completed' && o.status !== 'cancelled');
 
       if (myOrders.length === 0) {
         container.innerHTML = '';
@@ -543,7 +542,7 @@
       document.getElementById('current-shop-title').innerText = shop.name;
       document.getElementById('current-shop-promptpay').innerText = `PromptPay: ${shop.promptpay}`;
 
-      const activeQueue = state.orders.filter(o => o.shopId === shop.id && o.status !== 'completed').length;
+      const activeQueue = state.orders.filter(o => o.shopId === shop.id && o.status !== 'completed' && o.status !== 'cancelled').length;
       document.getElementById('current-shop-queue-count').innerText = activeQueue;
 
       const myId = getCustomerId();
@@ -570,14 +569,18 @@
           </div>
 
           ${o.status === 'pending_price' ? `
-            <div class="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100">
-              ⏳ กำลังรอทางร้านประเมินราคาอาหาร...
+            <div class="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100 flex justify-between items-center">
+              <span>⏳ กำลังรอทางร้านประเมินราคาอาหาร...</span>
+              <button onclick="requestCancelOrder('${o.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold underline ml-2">ขอยกเลิก</button>
             </div>
           ` : ''}
 
           ${o.status === 'awaiting_payment' ? `
             <div class="bg-orange-50 border border-orange-200 p-3.5 rounded-xl space-y-3 text-center">
-              <div class="text-xs sm:text-sm text-gray-700">ยอดชำระ: <strong class="text-lg text-orange-600">${o.price} บาท</strong></div>
+              <div class="text-xs sm:text-sm text-gray-700 flex justify-between items-center">
+                <span>ยอดชำระ: <strong class="text-lg text-orange-600">${o.price} บาท</strong></span>
+                <button onclick="requestCancelOrder('${o.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold underline">ขอยกเลิก</button>
+              </div>
               <div class="bg-white p-2.5 rounded-xl inline-block shadow-sm">
                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=PromptPay-${shop.promptpay}-${o.price}" alt="PromptPay QR" class="w-32 h-32 mx-auto">
                 <div class="text-[10px] text-gray-500 mt-1">พร้อมเพย์: ${shop.promptpay}</div>
@@ -599,7 +602,13 @@
           ${o.status === 'cooking' ? `
             <div class="text-xs text-blue-700 bg-blue-50 p-3 rounded-xl flex items-center justify-between border border-blue-100">
               <span>🍳 ชำระเงินเรียบร้อย (${o.price} ฿) - ร้านกำลังปรุงอาหาร</span>
-              <i class="fa-solid fa-fire text-orange-500 text-lg"></i>
+              <button onclick="requestCancelOrder('${o.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold underline">ขอยกเลิก</button>
+            </div>
+          ` : ''}
+
+          ${o.status === 'request_cancel' ? `
+            <div class="text-xs text-amber-700 bg-amber-50 p-3 rounded-xl border border-amber-200">
+              ⏳ ส่งคำขอยกเลิกเรียบร้อยแล้ว กำลังรอร้านค้ากดยืนยันอนุมัติ...
             </div>
           ` : ''}
 
@@ -607,6 +616,12 @@
             <div class="text-xs text-emerald-700 bg-emerald-50 p-3 rounded-xl font-bold flex items-center justify-between border border-emerald-100">
               <span>✅ อาหารเสร็จแล้ว! มารับได้ที่หน้าร้าน</span>
               <i class="fa-solid fa-circle-check text-lg"></i>
+            </div>
+          ` : ''}
+
+          ${o.status === 'cancelled' ? `
+            <div class="text-xs text-gray-500 bg-gray-100 p-3 rounded-xl font-medium border border-gray-200">
+              ❌ รายการนี้ถูกยกเลิกแล้ว
             </div>
           ` : ''}
 
@@ -630,7 +645,7 @@
       const shopOrders = state.orders.filter(o => o.shopId === shop.id);
 
       document.getElementById('stat-pending-price').innerText = shopOrders.filter(o => o.status === 'pending_price').length;
-      document.getElementById('stat-cooking').innerText = shopOrders.filter(o => o.status === 'cooking' || o.status === 'awaiting_payment').length;
+      document.getElementById('stat-cooking').innerText = shopOrders.filter(o => o.status === 'cooking' || o.status === 'awaiting_payment' || o.status === 'request_cancel').length;
       document.getElementById('stat-completed').innerText = shopOrders.filter(o => o.status === 'completed').length;
 
       const listContainer = document.getElementById('merchant-orders-list');
@@ -662,6 +677,20 @@
             </div>
           ` : ''}
 
+          ${o.status === 'request_cancel' ? `
+            <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs space-y-2">
+              <div class="font-bold text-amber-800">⚠️ ลูกค้าส่งคำขอยกเลิกออเดอร์นี้</div>
+              <div class="flex space-x-2">
+                <button onclick="approveCancelOrderByMerchant('${o.id}', true)" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 rounded-lg transition">
+                  ✅ อนุมัติการยกเลิก
+                </button>
+                <button onclick="approveCancelOrderByMerchant('${o.id}', false)" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-1.5 rounded-lg transition">
+                  ❌ ปฏิเสธการยกเลิก
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
           ${o.status === 'cooking' ? `
             <div class="flex items-center justify-between pt-1 border-t">
               <span class="text-xs font-bold text-gray-700">ชำระแล้ว: ${o.price} บาท</span>
@@ -676,6 +705,12 @@
               ✔ สำเร็จเรียบร้อย (${o.price} บาท)
             </div>
           ` : ''}
+
+          ${o.status === 'cancelled' ? `
+            <div class="text-right text-xs text-gray-400 pt-1 border-t">
+              ❌ ยกเลิกแล้ว
+            </div>
+          ` : ''}
         </div>
       `).join('');
     }
@@ -686,7 +721,9 @@
         case 'awaiting_payment': return 'รอโอนเงิน';
         case 'verifying_slip': return 'กำลังตรวจสลิป';
         case 'cooking': return 'กำลังปรุงอาหาร';
+        case 'request_cancel': return 'รอยืนยันการยกเลิก';
         case 'completed': return 'เสร็จเรียบร้อย';
+        case 'cancelled': return 'ยกเลิกแล้ว';
         default: return status;
       }
     }
@@ -697,13 +734,34 @@
         case 'awaiting_payment': return 'bg-orange-100 text-orange-700';
         case 'verifying_slip': return 'bg-blue-100 text-blue-700';
         case 'cooking': return 'bg-blue-100 text-blue-700';
+        case 'request_cancel': return 'bg-purple-100 text-purple-700';
         case 'completed': return 'bg-emerald-100 text-emerald-700';
+        case 'cancelled': return 'bg-gray-100 text-gray-700';
         default: return 'bg-gray-100 text-gray-700';
       }
     }
 
+    // ANTI-SPAM & SUBMIT ORDER
     function handleCustomerSubmitOrder(e) {
       e.preventDefault();
+      const myId = getCustomerId();
+
+      // Rule 1: Max 3 Active Orders Limit
+      const activeOrders = state.orders.filter(o => o.customerId === myId && o.status !== 'completed' && o.status !== 'cancelled');
+      if (activeOrders.length >= 3) {
+        alert('⚠️ คุณมีรายการคิวอาหารค้างในระบบเกิน 3 รายการแล้ว\nกรุณารอให้อาหารเสร็จ หรือยกเลิกรายการเดิมก่อนสั่งเพิ่ม');
+        return;
+      }
+
+      // Rule 2: 15-second Order Cooldown
+      const lastOrderTime = localStorage.getItem('kmitl_last_order_timestamp');
+      const now = Date.now();
+      if (lastOrderTime && (now - parseInt(lastOrderTime)) < 15000) {
+        const remaining = Math.ceil((15000 - (now - parseInt(lastOrderTime))) / 1000);
+        alert(`⏳ กรุณารออีก ${remaining} วินาที ก่อนสั่งรายการถัดไป เพื่อป้องกันระบบสแปม`);
+        return;
+      }
+
       const foodInput = document.getElementById('order-food-input');
       const foodText = foodInput.value.trim();
 
@@ -712,20 +770,48 @@
       const newOrder = {
         id: 'ord_' + Math.random().toString(36).substr(2, 9),
         shopId: state.currentSelectedShopId,
-        customerId: getCustomerId(),
+        customerId: myId,
         food: foodText,
         price: null,
+        previousStatus: null,
         status: 'pending_price',
         time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
       };
 
       state.orders.unshift(newOrder);
+      localStorage.setItem('kmitl_last_order_timestamp', now.toString());
       saveState();
       foodInput.value = '';
       renderAllViews();
     }
 
-    // AI SLIP OCR CHECK ENGINE
+    // CANCEL ORDER REQUEST LOGIC
+    function requestCancelOrder(orderId) {
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      if (!confirm('คุณต้องการส่งคำขอยกเลิกออเดอร์นี้ไปยังร้านค้าหรือไม่?')) return;
+
+      order.previousStatus = order.status;
+      order.status = 'request_cancel';
+      saveState();
+      renderAllViews();
+    }
+
+    function approveCancelOrderByMerchant(orderId, isApproved) {
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      if (isApproved) {
+        order.status = 'cancelled';
+      } else {
+        order.status = order.previousStatus || 'cooking';
+      }
+      saveState();
+      renderAllViews();
+    }
+
+    // AI SLIP OCR CHECK ENGINE WITH 7-SECOND TIMEOUT GUARD
     async function handleCustomerUploadSlip(e, orderId) {
       const file = e.target.files[0];
       if (!file) return;
@@ -733,7 +819,6 @@
       const order = state.orders.find(o => o.id === orderId);
       if (!order) return;
 
-      // 1. Anti-duplicate slip check (by file signature hash)
       const slipHash = file.name + '_' + file.size + '_' + file.lastModified;
       if (state.usedSlipsHashes.includes(slipHash)) {
         order.errorMessage = "❌ สลิปนี้ถูกใช้งานไปแล้วในระบบ กรุณาใช้สลิปโอนเงินใหม่";
@@ -747,12 +832,16 @@
       saveState();
       renderAllViews();
 
+      // OCR Execution with 7-second Timeout Guard
+      const ocrPromise = Tesseract.recognize(file, 'tha+eng');
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT')), 7000)
+      );
+
       try {
-        // Run OCR scan using Tesseract.js
-        const result = await Tesseract.recognize(file, 'tha+eng');
+        const result = await Promise.race([ocrPromise, timeoutPromise]);
         const text = result.data.text || '';
 
-        // Verification Rules
         const isBankKeywords = /โอนเงินสำเร็จ|รายการสำเร็จ|สำเร็จ|บาท|THB|Transfer|Successful/i.test(text);
 
         if (!isBankKeywords) {
@@ -763,18 +852,16 @@
           return;
         }
 
-        // Extract monetary values from text
         const amountMatches = text.match(/([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)\s*(?:บาท|THB)/g) || text.match(/[0-9]+\.[0-9]{2}/g) || text.match(/[0-9]{2,4}/g);
         
         let scannedAmount = 0;
         if (amountMatches) {
           const numbers = amountMatches.map(m => parseFloat(m.replace(/[^0-9.]/g, ''))).filter(n => !isNaN(n) && n > 0);
           if (numbers.length > 0) {
-            scannedAmount = Math.max(...numbers); // Pick plausible transfer amount
+            scannedAmount = Math.max(...numbers);
           }
         }
 
-        // Price comparison: Allow exact or OVERPAYMENT (โอนเกินผ่าน)
         if (scannedAmount > 0 && scannedAmount < order.price) {
           order.status = 'awaiting_payment';
           order.errorMessage = `❌ ยอดเงินไม่ครบ: ยอดในสลิป (${scannedAmount} บาท) น้อยกว่าราคาอาหาร (${order.price} บาท)`;
@@ -783,7 +870,6 @@
           return;
         }
 
-        // Passed verification: Mark slip used & set status to cooking
         state.usedSlipsHashes.push(slipHash);
         order.status = 'cooking';
         order.errorMessage = null;
@@ -791,11 +877,8 @@
         renderAllViews();
 
       } catch (err) {
-        console.error(err);
-        // Fallback for demo if OCR fails to load
-        state.usedSlipsHashes.push(slipHash);
-        order.status = 'cooking';
-        order.errorMessage = null;
+        order.status = 'awaiting_payment';
+        order.errorMessage = "❌ ไม่สามารถอ่านสลิปได้ หรือรูปภาพไม่ถูกต้อง (กรุณาแนบสลิปโอนเงินใหม่)";
         saveState();
         renderAllViews();
       }
