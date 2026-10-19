@@ -365,7 +365,7 @@
     </div>
   </div>
 
-  <!-- JAVASCRIPT DIRECT ENGINE -->
+  <!-- JAVASCRIPT CLOUD-FIRST ENGINE -->
   <script>
     const ADMIN_MASTER_PIN = "iamthekmitlnumbe1405";
     const FIREBASE_URL = "https://kmitl-cafeteria-default-rtdb.asia-southeast1.firebasedatabase.app/app_state.json";
@@ -383,17 +383,9 @@
       usedSlipsHashes: []
     };
 
-    let state = loadLocalBackup() || defaultState;
+    let state = defaultState;
     let activeMerchant = loadActiveMerchant();
     let currentSelectedShopId = localStorage.getItem('kmitl_current_shop_id') || null;
-
-    function loadLocalBackup() {
-      const saved = localStorage.getItem('kmitl_cafeteria_v10_local');
-      if (saved) {
-        try { return JSON.parse(saved); } catch(e) {}
-      }
-      return null;
-    }
 
     function loadActiveMerchant() {
       const saved = localStorage.getItem('kmitl_active_merchant');
@@ -416,9 +408,8 @@
       renderAllViews();
     }
 
-    // Save State locally and background sync to cloud
+    // Save State directly to Cloud First, then update local
     async function saveState() {
-      localStorage.setItem('kmitl_cafeteria_v10_local', JSON.stringify(state));
       renderAllViews();
 
       try {
@@ -427,13 +418,14 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(state)
         });
+        localStorage.setItem('kmitl_cafeteria_v11_local', JSON.stringify(state));
         updateCloudStatus(true);
       } catch (err) {
         updateCloudStatus(true);
       }
     }
 
-    // Fetch State from Firebase Cloud
+    // Fetch Latest State from Cloud First
     async function fetchFromCloud() {
       try {
         const response = await fetch(FIREBASE_URL);
@@ -445,7 +437,7 @@
             state.orders = cloudData.orders || [];
             state.usedSlipsHashes = cloudData.usedSlipsHashes || [];
 
-            localStorage.setItem('kmitl_cafeteria_v10_local', JSON.stringify(state));
+            localStorage.setItem('kmitl_cafeteria_v11_local', JSON.stringify(state));
             updateCloudStatus(true);
             renderAllViews();
             return;
@@ -466,8 +458,8 @@
       }
     }
 
-    // Poll Cloud every 3 seconds
-    setInterval(fetchFromCloud, 3000);
+    // Poll Cloud every 2 seconds for instant cross-device sync
+    setInterval(fetchFromCloud, 2000);
 
     function setDeviceView(type) {
       const viewport = document.getElementById('app-viewport');
@@ -791,7 +783,7 @@
     }
 
     function forceResetCloudData() {
-      if (confirm("คุณแน่ใจหรือไม่ที่จะรีเซ็ต Cloud Data ให้กลับไปใช้ค่า 1 ร้านค้าเริ่มต้นบนทุกเครื่อง?")) {
+      if (confirm("คุณแน่ใจหรือไม่ที่จะรีเซ็ต Cloud Data ให้กลับไปใช้ค่าเริ่มต้นบนทุกเครื่อง?")) {
         state = defaultState;
         localStorage.clear();
         saveState();
@@ -1106,8 +1098,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      fetchFromCloud();
-      renderAllViews();
+      fetchFromCloud().then(() => {
+        renderAllViews();
+      });
     });
   </script>
 </body>
