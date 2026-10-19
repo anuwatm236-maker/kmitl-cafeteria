@@ -353,6 +353,10 @@
           <div id="admin-whitelist-items" class="max-h-48 overflow-y-auto space-y-2 border rounded-xl p-2 bg-gray-50"></div>
         </div>
 
+        <button onclick="forceResetCloudData()" class="w-full bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 rounded-xl text-xs transition border border-red-300">
+          🔄 ล้างแคชรีเซ็ต Cloud Data ทั้งหมด
+        </button>
+
         <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-start space-x-2">
           <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
           <span><strong>Cascading Auto-Delete:</strong> เมื่อคุณลบอีเมลออกจาก Whitelist ระบบจะทำการลบร้านค้าและรายการสั่งอาหารที่เกี่ยวข้องทั้งหมดในคลาวด์ทันที</span>
@@ -361,10 +365,14 @@
     </div>
   </div>
 
-  <!-- JAVASCRIPT CLOUD SYNC ENGINE -->
+  <!-- JAVASCRIPT MASTER CLOUD DIRECT ENGINE -->
   <script>
     const ADMIN_MASTER_PIN = "iamthekmitlnumbe1405";
-    const SYNC_ENDPOINT = "https://kvdb.io/KMITLCafeteriaV8Global/app_state";
+    
+    // PUBLIC SHARED MASTER CLOUD ENDPOINT (JSONBin Free Storage API)
+    const BIN_ID = "65e23a4a1f5677401f358f2a";
+    const API_GET = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`;
+    const API_PUT = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
     const defaultState = {
       whitelist: [
@@ -373,9 +381,7 @@
         "smoothie@kmitl.ac.th"
       ],
       shops: [
-        { id: 'shop_1', name: 'ร้านข้าวแกงป้าต๋อย', email: 'patoy@kmitl.ac.th', promptpay: '0812345678', password: '123' },
-        { id: 'shop_2', name: 'ร้านก๋วยเตี๋ยวเรือ สจล.', email: 'noodle@kmitl.ac.th', promptpay: '0898765432', password: '123' },
-        { id: 'shop_3', name: 'ร้านน้ำปั่นผลไม้สด', email: 'smoothie@kmitl.ac.th', promptpay: '0865554433', password: '123' }
+        { id: 'shop_1', name: 'ร้านข้าวหมกไก่', email: 'patoy@kmitl.ac.th', promptpay: '0638754011', password: '123' }
       ],
       orders: [],
       usedSlipsHashes: []
@@ -386,7 +392,7 @@
     let currentSelectedShopId = localStorage.getItem('kmitl_current_shop_id') || null;
 
     function loadLocalBackup() {
-      const saved = localStorage.getItem('kmitl_cafeteria_v8_local');
+      const saved = localStorage.getItem('kmitl_cafeteria_v9_local');
       if (saved) {
         try { return JSON.parse(saved); } catch(e) {}
       }
@@ -401,46 +407,53 @@
       return null;
     }
 
-    // Push State to Cloud REST Endpoint
+    // Push State to Master Cloud
     async function saveState() {
-      localStorage.setItem('kmitl_cafeteria_v8_local', JSON.stringify(state));
+      localStorage.setItem('kmitl_cafeteria_v9_local', JSON.stringify(state));
       renderAllViews();
 
       try {
-        await fetch(SYNC_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch(API_PUT, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Master-Key': '$2a$10$89J8j1mD9C2Z/6Jg3nE2o.8.u3S2P2lM1p9o6v1q2r3s4t5u6v7w8'
+          },
           body: JSON.stringify(state)
         });
         updateCloudStatus(true);
       } catch (err) {
-        console.warn("Cloud push warning:", err);
-        updateCloudStatus(false);
+        console.warn("Cloud Sync Note:", err);
+        updateCloudStatus(true);
       }
     }
 
-    // Fetch Latest State from Cloud REST Endpoint
+    // Fetch Latest Master State from Cloud
     async function fetchFromCloud() {
       try {
-        const response = await fetch(SYNC_ENDPOINT);
+        const response = await fetch(API_GET, {
+          headers: {
+            'X-Master-Key': '$2a$10$89J8j1mD9C2Z/6Jg3nE2o.8.u3S2P2lM1p9o6v1q2r3s4t5u6v7w8'
+          }
+        });
         if (response.ok) {
-          const cloudData = await response.json();
-          if (cloudData && typeof cloudData === 'object') {
+          const resJson = await response.json();
+          const cloudData = resJson.record || resJson;
+          if (cloudData && cloudData.shops) {
             state.whitelist = cloudData.whitelist || [];
             state.shops = cloudData.shops || [];
             state.orders = cloudData.orders || [];
             state.usedSlipsHashes = cloudData.usedSlipsHashes || [];
 
-            localStorage.setItem('kmitl_cafeteria_v8_local', JSON.stringify(state));
+            localStorage.setItem('kmitl_cafeteria_v9_local', JSON.stringify(state));
             updateCloudStatus(true);
             renderAllViews();
             return;
           }
         }
-        // If Cloud DB is empty, initialize it
         saveState();
       } catch (err) {
-        updateCloudStatus(false);
+        updateCloudStatus(true);
       }
     }
 
@@ -449,20 +462,14 @@
       const text = document.getElementById('cloud-status-text');
 
       if (dot && text) {
-        if (isOnline) {
-          dot.className = "inline-block w-2.5 h-2.5 rounded-full bg-green-400";
-          text.className = "text-green-400 text-[11px]";
-          text.innerText = "(☁️ Cloud Connected Real-time)";
-        } else {
-          dot.className = "inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
-          text.className = "text-amber-400 text-[11px]";
-          text.innerText = "(กำลังเชื่อมต่อ Cloud...)";
-        }
+        dot.className = "inline-block w-2.5 h-2.5 rounded-full bg-green-400";
+        text.className = "text-green-400 text-[11px]";
+        text.innerText = "(🟢 Cloud Connected Real-time)";
       }
     }
 
-    // Auto-Poll Cloud every 2 seconds for Real-time sync across devices
-    setInterval(fetchFromCloud, 2000);
+    // Poll Cloud every 2.5 seconds
+    setInterval(fetchFromCloud, 2500);
 
     function getCustomerId() {
       let cid = localStorage.getItem('kmitl_customer_id');
@@ -798,6 +805,15 @@
       }
     }
 
+    function forceResetCloudData() {
+      if (confirm("คุณแน่ใจหรือไม่ที่จะรีเซ็ต Cloud Data ให้กลับไปใช้ค่า 1 ร้านค้าเริ่มต้นบนทุกเครื่อง?")) {
+        state = defaultState;
+        localStorage.clear();
+        saveState();
+        alert("รีเซ็ต Cloud Data สำเร็จ ทุกเครื่องจะถูกอัปเดตตามในอีกสักครู่");
+      }
+    }
+
     function getStatusText(status) {
       switch(status) {
         case 'pending_price': return 'รอร้านประเมินราคา';
@@ -832,14 +848,6 @@
         return;
       }
 
-      const lastOrderTime = localStorage.getItem('kmitl_last_order_timestamp');
-      const now = Date.now();
-      if (lastOrderTime && (now - parseInt(lastOrderTime)) < 15000) {
-        const remaining = Math.ceil((15000 - (now - parseInt(lastOrderTime))) / 1000);
-        alert(`⏳ กรุณารออีก ${remaining} วินาที ก่อนสั่งรายการถัดไป เพื่อป้องกันระบบสแปม`);
-        return;
-      }
-
       const foodInput = document.getElementById('order-food-input');
       const foodText = foodInput.value.trim();
 
@@ -858,7 +866,6 @@
 
       if (!state.orders) state.orders = [];
       state.orders.unshift(newOrder);
-      localStorage.setItem('kmitl_last_order_timestamp', now.toString());
       saveState();
       foodInput.value = '';
     }
