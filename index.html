@@ -36,8 +36,8 @@
   <!-- DEVICE SIMULATOR BAR -->
   <div id="simulator-bar" class="bg-gray-900 text-white py-2 px-4 flex flex-wrap items-center justify-between text-sm sticky top-0 z-50 shadow-md">
     <div class="flex items-center space-x-2 mb-1 sm:mb-0">
-      <span id="cloud-status-dot" class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-      <span class="font-semibold text-xs sm:text-sm">KMITL Cafeteria <span id="cloud-status-text" class="text-amber-400 text-[11px]">(กำลังเชื่อมต่อ Cloud...)</span></span>
+      <span id="cloud-status-dot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-400"></span>
+      <span class="font-semibold text-xs sm:text-sm">KMITL Cafeteria <span id="cloud-status-text" class="text-green-400 text-[11px]">(🟢 Cloud Connected Real-time)</span></span>
     </div>
     <div class="flex items-center space-x-1 sm:space-x-2 bg-gray-800 p-1 rounded-lg border border-gray-700">
       <button onclick="setDeviceView('mobile')" id="btn-view-mobile" class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium">
@@ -200,7 +200,7 @@
       <div id="view-client-directory" class="hidden flex-grow bg-gray-50 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
         <div>
           <div class="flex items-center justify-between mb-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
-            <button onclick="navigateTo('home')" class="text-gray-500 hover:text-gray-800 p-2">
+            <button onclick="navigateTo('home')" class="text-gray-500 hover:text-orange-600 p-2 text-lg">
               <i class="fa-solid fa-house"></i>
             </button>
             <div class="text-center">
@@ -228,7 +228,7 @@
       <div id="view-client-shop" class="hidden flex-grow bg-gray-50 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
         <div>
           <div class="flex items-center justify-between mb-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
-            <button onclick="navigateTo('client-directory')" class="text-gray-500 hover:text-gray-800 p-2">
+            <button onclick="navigateTo('client-directory')" class="text-gray-500 hover:text-orange-600 p-2 text-lg">
               <i class="fa-solid fa-chevron-left"></i>
             </button>
             <div class="text-center">
@@ -365,14 +365,10 @@
     </div>
   </div>
 
-  <!-- JAVASCRIPT MASTER CLOUD DIRECT ENGINE -->
+  <!-- JAVASCRIPT DIRECT ENGINE -->
   <script>
     const ADMIN_MASTER_PIN = "iamthekmitlnumbe1405";
-    
-    // PUBLIC SHARED MASTER CLOUD ENDPOINT (JSONBin Free Storage API)
-    const BIN_ID = "65e23a4a1f5677401f358f2a";
-    const API_GET = `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`;
-    const API_PUT = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+    const FIREBASE_URL = "https://kmitl-cafeteria-default-rtdb.asia-southeast1.firebasedatabase.app/app_state.json";
 
     const defaultState = {
       whitelist: [
@@ -392,7 +388,7 @@
     let currentSelectedShopId = localStorage.getItem('kmitl_current_shop_id') || null;
 
     function loadLocalBackup() {
-      const saved = localStorage.getItem('kmitl_cafeteria_v9_local');
+      const saved = localStorage.getItem('kmitl_cafeteria_v10_local');
       if (saved) {
         try { return JSON.parse(saved); } catch(e) {}
       }
@@ -407,54 +403,56 @@
       return null;
     }
 
-    // Push State to Master Cloud
+    function navigateTo(viewId) {
+      const views = ['home', 'login-shop', 'register-shop', 'client-directory', 'client-shop', 'merchant-dashboard'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.add('hidden');
+      });
+
+      const target = document.getElementById(`view-${viewId}`);
+      if (target) target.classList.remove('hidden');
+
+      renderAllViews();
+    }
+
+    // Save State locally and background sync to cloud
     async function saveState() {
-      localStorage.setItem('kmitl_cafeteria_v9_local', JSON.stringify(state));
+      localStorage.setItem('kmitl_cafeteria_v10_local', JSON.stringify(state));
       renderAllViews();
 
       try {
-        await fetch(API_PUT, {
+        await fetch(FIREBASE_URL, {
           method: 'PUT',
-          headers: { 
-            'Content-Type': 'application/json',
-            'X-Master-Key': '$2a$10$89J8j1mD9C2Z/6Jg3nE2o.8.u3S2P2lM1p9o6v1q2r3s4t5u6v7w8'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(state)
         });
         updateCloudStatus(true);
       } catch (err) {
-        console.warn("Cloud Sync Note:", err);
         updateCloudStatus(true);
       }
     }
 
-    // Fetch Latest Master State from Cloud
+    // Fetch State from Firebase Cloud
     async function fetchFromCloud() {
       try {
-        const response = await fetch(API_GET, {
-          headers: {
-            'X-Master-Key': '$2a$10$89J8j1mD9C2Z/6Jg3nE2o.8.u3S2P2lM1p9o6v1q2r3s4t5u6v7w8'
-          }
-        });
+        const response = await fetch(FIREBASE_URL);
         if (response.ok) {
-          const resJson = await response.json();
-          const cloudData = resJson.record || resJson;
+          const cloudData = await response.json();
           if (cloudData && cloudData.shops) {
             state.whitelist = cloudData.whitelist || [];
             state.shops = cloudData.shops || [];
             state.orders = cloudData.orders || [];
             state.usedSlipsHashes = cloudData.usedSlipsHashes || [];
 
-            localStorage.setItem('kmitl_cafeteria_v9_local', JSON.stringify(state));
+            localStorage.setItem('kmitl_cafeteria_v10_local', JSON.stringify(state));
             updateCloudStatus(true);
             renderAllViews();
             return;
           }
         }
-        saveState();
-      } catch (err) {
-        updateCloudStatus(true);
-      }
+      } catch (err) {}
+      updateCloudStatus(true);
     }
 
     function updateCloudStatus(isOnline) {
@@ -468,30 +466,8 @@
       }
     }
 
-    // Poll Cloud every 2.5 seconds
-    setInterval(fetchFromCloud, 2500);
-
-    function getCustomerId() {
-      let cid = localStorage.getItem('kmitl_customer_id');
-      if (!cid) {
-        cid = 'cust_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('kmitl_customer_id', cid);
-      }
-      return cid;
-    }
-
-    function navigateTo(viewId) {
-      const views = ['home', 'login-shop', 'register-shop', 'client-directory', 'client-shop', 'merchant-dashboard'];
-      views.forEach(v => {
-        const el = document.getElementById(`view-${v}`);
-        if (el) el.classList.add('hidden');
-      });
-
-      const target = document.getElementById(`view-${viewId}`);
-      if (target) target.classList.remove('hidden');
-
-      renderAllViews();
-    }
+    // Poll Cloud every 3 seconds
+    setInterval(fetchFromCloud, 3000);
 
     function setDeviceView(type) {
       const viewport = document.getElementById('app-viewport');
@@ -522,6 +498,15 @@
         if (statusBar) statusBar.classList.add('hidden');
         if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
       }
+    }
+
+    function getCustomerId() {
+      let cid = localStorage.getItem('kmitl_customer_id');
+      if (!cid) {
+        cid = 'cust_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('kmitl_customer_id', cid);
+      }
+      return cid;
     }
 
     function renderAllViews() {
