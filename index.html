@@ -276,9 +276,14 @@
               <span class="text-[10px] bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">แผงควบคุมร้านค้า</span>
               <h2 id="merchant-dash-shopname" class="font-bold text-gray-800 text-base sm:text-xl leading-tight mt-0.5">ร้านค้าของคุณ</h2>
             </div>
-            <button onclick="handleMerchantLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1">
-              <i class="fa-solid fa-right-from-bracket"></i> <span>ออกจากระบบ</span>
-            </button>
+            <div class="flex items-center space-x-2">
+              <button onclick="clearCompletedMerchantOrders()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1 border border-amber-300">
+                <i class="fa-solid fa-broom"></i> <span class="hidden sm:inline">เคลียร์คิวที่เสร็จแล้ว</span>
+              </button>
+              <button onclick="handleMerchantLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1">
+                <i class="fa-solid fa-right-from-bracket"></i> <span class="hidden sm:inline">ออก</span>
+              </button>
+            </div>
           </div>
 
           <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
@@ -298,7 +303,9 @@
 
           <h3 class="font-bold text-gray-800 text-sm sm:text-base mb-2 flex items-center justify-between">
             <span><i class="fa-solid fa-fire text-orange-500 mr-1.5"></i> รายการคิวลูกค้า</span>
-            <span class="text-xs font-normal text-gray-500">อัปเดตอัตโนมัติ</span>
+            <button onclick="clearCompletedMerchantOrders()" class="text-xs text-orange-600 font-bold hover:underline sm:hidden">
+              🧹 เคลียร์คิวเสร็จแล้ว
+            </button>
           </h3>
 
           <div id="merchant-orders-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
@@ -380,7 +387,7 @@
     let state = loadState();
 
     function loadState() {
-      const saved = localStorage.getItem('kmitl_cafeteria_v3_state');
+      const saved = localStorage.getItem('kmitl_cafeteria_v4_state');
       if (saved) {
         try { return JSON.parse(saved); } catch(e) { console.error(e); }
       }
@@ -388,7 +395,7 @@
     }
 
     function saveState() {
-      localStorage.setItem('kmitl_cafeteria_v3_state', JSON.stringify(state));
+      localStorage.setItem('kmitl_cafeteria_v4_state', JSON.stringify(state));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -556,7 +563,12 @@
         return;
       }
 
-      listContainer.innerHTML = myShopOrders.map(o => `
+      listContainer.innerHTML = myShopOrders.map(o => {
+        // Formatted PromptPay EMVCo standard payload QR for Thai Banks
+        const cleanPromptPay = shop.promptpay.replace(/[^0-9]/g, '');
+        const qrUrl = `https://promptpay.io/${cleanPromptPay}/${o.price}.png`;
+
+        return `
         <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
           <div class="flex justify-between items-start">
             <div>
@@ -581,9 +593,10 @@
                 <span>ยอดชำระ: <strong class="text-lg text-orange-600">${o.price} บาท</strong></span>
                 <button onclick="requestCancelOrder('${o.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold underline">ขอยกเลิก</button>
               </div>
-              <div class="bg-white p-2.5 rounded-xl inline-block shadow-sm">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=PromptPay-${shop.promptpay}-${o.price}" alt="PromptPay QR" class="w-32 h-32 mx-auto">
-                <div class="text-[10px] text-gray-500 mt-1">พร้อมเพย์: ${shop.promptpay}</div>
+              <div class="bg-white p-3 rounded-xl inline-block shadow-sm">
+                <img src="${qrUrl}" alt="PromptPay QR Code" class="w-36 h-36 mx-auto border p-1 rounded-lg">
+                <div class="text-[11px] font-bold text-gray-700 mt-1.5"><i class="fa-solid fa-qrcode text-orange-500"></i> สแกนจ่ายด้วยแอปธนาคาร</div>
+                <div class="text-[10px] text-gray-500">พร้อมเพย์: ${shop.promptpay}</div>
               </div>
               <div class="text-left pt-1">
                 <label class="block text-xs font-bold text-gray-700 mb-1">แนบรูปสลิปการโอนเงิน (AI ตรวจสอบอัตโนมัติ):</label>
@@ -631,7 +644,8 @@
             </div>
           ` : ''}
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function renderMerchantDashboard() {
@@ -715,6 +729,25 @@
       `).join('');
     }
 
+    // CLEAR COMPLETED & CANCELLED QUEUE FOR MERCHANT
+    function clearCompletedMerchantOrders() {
+      if (!state.activeMerchant) return;
+      const shopId = state.activeMerchant.shopId;
+
+      const countToClear = state.orders.filter(o => o.shopId === shopId && (o.status === 'completed' || o.status === 'cancelled')).length;
+
+      if (countToClear === 0) {
+        alert('ไม่มีรายการคิวที่เสร็จแล้วหรือยกเลิกแล้วให้เคลียร์');
+        return;
+      }
+
+      if (confirm(`คุณต้องการลบประวัติคิวที่เสร็จสมบูรณ์/ยกเลิกแล้ว จำนวน ${countToClear} รายการ ออกจากหน้าจอหรือไม่?`)) {
+        state.orders = state.orders.filter(o => !(o.shopId === shopId && (o.status === 'completed' || o.status === 'cancelled')));
+        saveState();
+        renderAllViews();
+      }
+    }
+
     function getStatusText(status) {
       switch(status) {
         case 'pending_price': return 'รอร้านประเมินราคา';
@@ -741,19 +774,16 @@
       }
     }
 
-    // ANTI-SPAM & SUBMIT ORDER
     function handleCustomerSubmitOrder(e) {
       e.preventDefault();
       const myId = getCustomerId();
 
-      // Rule 1: Max 3 Active Orders Limit
       const activeOrders = state.orders.filter(o => o.customerId === myId && o.status !== 'completed' && o.status !== 'cancelled');
       if (activeOrders.length >= 3) {
         alert('⚠️ คุณมีรายการคิวอาหารค้างในระบบเกิน 3 รายการแล้ว\nกรุณารอให้อาหารเสร็จ หรือยกเลิกรายการเดิมก่อนสั่งเพิ่ม');
         return;
       }
 
-      // Rule 2: 15-second Order Cooldown
       const lastOrderTime = localStorage.getItem('kmitl_last_order_timestamp');
       const now = Date.now();
       if (lastOrderTime && (now - parseInt(lastOrderTime)) < 15000) {
@@ -785,7 +815,6 @@
       renderAllViews();
     }
 
-    // CANCEL ORDER REQUEST LOGIC
     function requestCancelOrder(orderId) {
       const order = state.orders.find(o => o.id === orderId);
       if (!order) return;
@@ -811,7 +840,6 @@
       renderAllViews();
     }
 
-    // AI SLIP OCR CHECK ENGINE WITH 7-SECOND TIMEOUT GUARD
     async function handleCustomerUploadSlip(e, orderId) {
       const file = e.target.files[0];
       if (!file) return;
@@ -832,7 +860,6 @@
       saveState();
       renderAllViews();
 
-      // OCR Execution with 7-second Timeout Guard
       const ocrPromise = Tesseract.recognize(file, 'tha+eng');
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('TIMEOUT')), 7000)
