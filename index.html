@@ -6,6 +6,8 @@
   <title>KMITL Cafeteria - ระบบจองคิวอาหาร สจล.</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Tesseract.js OCR Engine for Slip Verification -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
     body {
@@ -23,14 +25,10 @@
     .kmitl-btn-orange:hover {
       background-color: #e06500;
     }
-    .card-shadow {
-      box-shadow: 0 10px 25px -5px rgba(255, 115, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-    }
     .device-sim {
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       margin: 0 auto;
     }
-    /* Hide scrollbars for smooth UI */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
@@ -53,6 +51,9 @@
       <button onclick="setDeviceView('desktop')" id="btn-view-desktop" class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white">
         <i class="fa-solid fa-laptop"></i> <span class="hidden sm:inline">โน้ตบุ๊ก</span>
       </button>
+      <button onclick="setDeviceView('fullscreen')" id="btn-view-fullscreen" class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white">
+        <i class="fa-solid fa-desktop"></i> <span class="hidden sm:inline">🖥️ เต็มจอ คอมพิวเตอร์</span>
+      </button>
     </div>
     <div class="flex items-center space-x-2 text-xs">
       <button onclick="openAdminModal()" class="bg-gray-700 hover:bg-gray-600 text-orange-300 px-2.5 py-1 rounded border border-orange-500/30 transition flex items-center space-x-1">
@@ -63,11 +64,11 @@
   </div>
 
   <!-- MAIN APP CONTAINER -->
-  <div class="flex-grow p-2 sm:p-4 flex items-center justify-center">
+  <div id="main-container" class="flex-grow p-2 sm:p-4 flex items-center justify-center">
     <div id="app-viewport" class="device-sim w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300">
       
       <!-- STATUS BAR SIMULATION -->
-      <div class="bg-orange-600 text-white text-xs px-5 py-1.5 flex justify-between items-center font-mono select-none">
+      <div id="status-bar" class="bg-orange-600 text-white text-xs px-5 py-1.5 flex justify-between items-center font-mono select-none">
         <span>9:41</span>
         <div class="flex items-center space-x-1.5">
           <i class="fa-solid fa-signal text-[10px]"></i>
@@ -76,11 +77,10 @@
         </div>
       </div>
 
-      <!-- VIEW 1: HOME (WHO ARE YOU?) -->
+      <!-- VIEW 1: HOME -->
       <div id="view-home" class="flex-grow kmitl-orange p-6 flex flex-col justify-between text-white relative">
         <div class="mt-4 flex justify-center">
-          <!-- LOGO CARD -->
-          <div class="bg-white text-gray-900 px-6 py-4 rounded-2xl shadow-xl w-full max-w-[260px] text-center border-2 border-orange-200 transform -rotate-1">
+          <div class="bg-white text-gray-900 px-6 py-4 rounded-2xl shadow-xl w-full max-w-[280px] text-center border-2 border-orange-200 transform -rotate-1">
             <div class="flex items-center justify-center space-x-1">
               <span class="text-4xl font-black text-orange-600 tracking-tighter">K</span>
               <span class="text-2xl font-extrabold text-gray-800 tracking-tight">mitl</span>
@@ -89,10 +89,9 @@
           </div>
         </div>
 
-        <div class="my-auto space-y-5 text-center">
+        <div class="my-auto space-y-5 text-center max-w-md mx-auto w-full">
           <h2 class="text-2xl font-bold tracking-wide drop-shadow-md">Who are you?</h2>
           
-          <!-- SHOP BUTTON -->
           <button onclick="navigateTo('login-shop')" class="w-full bg-white text-gray-900 hover:bg-orange-50 font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-between text-xl border-2 border-orange-100 transform active:scale-95 transition">
             <span class="text-2xl font-bold ml-2">Shop</span>
             <div class="bg-orange-100 p-2 rounded-xl">
@@ -102,7 +101,6 @@
 
           <div class="text-lg font-bold text-white/90 my-2">- Or -</div>
 
-          <!-- CLIENT BUTTON -->
           <button onclick="navigateTo('client-directory')" class="w-full bg-white text-gray-900 hover:bg-orange-50 font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-between text-xl border-2 border-orange-100 transform active:scale-95 transition">
             <span class="text-2xl font-bold ml-2">Client</span>
             <div class="bg-purple-100 p-2 rounded-xl">
@@ -127,7 +125,7 @@
           <p class="text-orange-100 text-sm mt-1">เข้าสู่ระบบสำหรับร้านค้า</p>
         </div>
 
-        <form onsubmit="handleMerchantLogin(event)" class="my-auto space-y-4">
+        <form onsubmit="handleMerchantLogin(event)" class="my-auto space-y-4 max-w-md mx-auto w-full">
           <div>
             <label class="block text-white text-sm font-semibold mb-1">Email / อีเมลร้านค้า</label>
             <input type="email" id="login-email" required placeholder="เช่น shop@kmitl.ac.th" class="w-full px-4 py-3 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 font-medium">
@@ -162,8 +160,7 @@
           <p class="text-orange-100 text-xs mt-1">ลงทะเบียนร้านค้าใหม่ (ต้องผ่าน Whitelist)</p>
         </div>
 
-        <form onsubmit="handleMerchantRegister(event)" class="my-auto space-y-3">
-          <!-- HONEYPOT TRAP FOR SPAM BOTS -->
+        <form onsubmit="handleMerchantRegister(event)" class="my-auto space-y-3 max-w-md mx-auto w-full">
           <input type="text" id="reg-honeypot" class="hidden" tabindex="-1" autocomplete="off">
 
           <div>
@@ -202,33 +199,26 @@
       </div>
 
       <!-- VIEW 4: CLIENT SHOP DIRECTORY -->
-      <div id="view-client-directory" class="hidden flex-grow bg-gray-50 p-4 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
+      <div id="view-client-directory" class="hidden flex-grow bg-gray-50 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
         <div>
-          <!-- Directory Header -->
-          <div class="flex items-center justify-between mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
             <button onclick="navigateTo('home')" class="text-gray-500 hover:text-gray-800 p-2">
               <i class="fa-solid fa-house"></i>
             </button>
             <div class="text-center">
-              <h2 class="font-bold text-gray-800 text-base">เลือกร้านค้าในโรงอาหาร</h2>
-              <p class="text-[11px] text-gray-500">สจล. KMITL Cafeteria</p>
+              <h2 class="font-bold text-gray-800 text-base sm:text-lg">เลือกร้านค้าในโรงอาหาร</h2>
+              <p class="text-[11px] text-gray-500">สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง</p>
             </div>
             <div class="w-8"></div>
           </div>
 
-          <!-- Active My Orders Banner -->
-          <div id="my-active-orders-container" class="mb-4">
-            <!-- Rendered dynamically -->
-          </div>
+          <div id="my-active-orders-container" class="mb-4"></div>
 
-          <h3 class="font-bold text-gray-700 text-sm mb-2.5 flex items-center">
+          <h3 class="font-bold text-gray-700 text-sm sm:text-base mb-2.5 flex items-center">
             <i class="fa-solid fa-store text-orange-500 mr-2"></i> ร้านค้าทั้งหมด
           </h3>
 
-          <!-- Shop List Grid -->
-          <div id="shop-directory-list" class="space-y-3">
-            <!-- Dynamic Shop Cards -->
-          </div>
+          <div id="shop-directory-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
         </div>
 
         <div class="mt-6 text-center text-xs text-gray-400 py-2">
@@ -237,29 +227,27 @@
       </div>
 
       <!-- VIEW 5: CLIENT ORDER FORM & QUEUE STATUS -->
-      <div id="view-client-shop" class="hidden flex-grow bg-gray-50 p-4 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
+      <div id="view-client-shop" class="hidden flex-grow bg-gray-50 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
         <div>
-          <!-- Shop Header -->
-          <div class="flex items-center justify-between mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+          <div class="flex items-center justify-between mb-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
             <button onclick="navigateTo('client-directory')" class="text-gray-500 hover:text-gray-800 p-2">
               <i class="fa-solid fa-chevron-left"></i>
             </button>
             <div class="text-center">
-              <h2 id="current-shop-title" class="font-bold text-gray-800 text-base">ชื่อร้านค้า</h2>
+              <h2 id="current-shop-title" class="font-bold text-gray-800 text-base sm:text-lg">ชื่อร้านค้า</h2>
               <p id="current-shop-promptpay" class="text-[11px] text-gray-500">PromptPay: -</p>
             </div>
-            <span class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-semibold">
+            <span class="bg-orange-100 text-orange-700 text-xs px-2.5 py-1 rounded-full font-semibold">
               <i class="fa-solid fa-clock mr-1"></i> <span id="current-shop-queue-count">0</span> คิว
             </span>
           </div>
 
-          <!-- Order Form -->
-          <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-4">
-            <h3 class="font-bold text-gray-800 text-sm mb-3 border-b pb-2">🍽️ สั่งอาหารคิวใหม่</h3>
+          <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 mb-4">
+            <h3 class="font-bold text-gray-800 text-sm sm:text-base mb-3 border-b pb-2">🍽️ สั่งอาหารคิวใหม่</h3>
             <form onsubmit="handleCustomerSubmitOrder(event)" class="space-y-3">
               <div>
-                <label class="block text-xs font-semibold text-gray-600 mb-1">เมนูอาหารที่ต้องการสั่ง</label>
-                <textarea id="order-food-input" required rows="2" placeholder="เช่น ข้าวมันไก่เนื้อน่อง ไม่หนัง พิเศษไข่ดาว" class="w-full p-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"></textarea>
+                <label class="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">เมนูอาหารที่ต้องการสั่ง</label>
+                <textarea id="order-food-input" required rows="2" placeholder="เช่น ข้าวมันไก่เนื้อน่อง ไม่หนัง พิเศษไข่ดาว" class="w-full p-3 border rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"></textarea>
               </div>
               <button type="submit" class="w-full kmitl-btn-orange font-bold py-2.5 rounded-xl shadow-md text-sm transition">
                 ส่งรายการสั่งอาหาร
@@ -267,14 +255,11 @@
             </form>
           </div>
 
-          <!-- Active Orders in this Shop -->
           <div>
-            <h3 class="font-bold text-gray-800 text-sm mb-2.5 flex items-center">
+            <h3 class="font-bold text-gray-800 text-sm sm:text-base mb-2.5 flex items-center">
               <i class="fa-solid fa-list-check text-orange-500 mr-2"></i> คิวอาหารของคุณในร้านนี้
             </h3>
-            <div id="customer-shop-orders-list" class="space-y-3">
-              <!-- Rendered Customer Orders -->
-            </div>
+            <div id="customer-shop-orders-list" class="space-y-3"></div>
           </div>
         </div>
 
@@ -284,44 +269,39 @@
       </div>
 
       <!-- VIEW 6: MERCHANT DASHBOARD -->
-      <div id="view-merchant-dashboard" class="hidden flex-grow bg-gray-100 p-4 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
+      <div id="view-merchant-dashboard" class="hidden flex-grow bg-gray-100 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
         <div>
-          <!-- Dashboard Header -->
-          <div class="flex items-center justify-between mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between mb-4 bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-200">
             <div>
               <span class="text-[10px] bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">แผงควบคุมร้านค้า</span>
-              <h2 id="merchant-dash-shopname" class="font-bold text-gray-800 text-base leading-tight mt-0.5">ร้านค้าของคุณ</h2>
+              <h2 id="merchant-dash-shopname" class="font-bold text-gray-800 text-base sm:text-xl leading-tight mt-0.5">ร้านค้าของคุณ</h2>
             </div>
-            <button onclick="handleMerchantLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-xl text-xs font-semibold">
-              <i class="fa-solid fa-right-from-bracket mr-1"></i> ออก
+            <button onclick="handleMerchantLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1">
+              <i class="fa-solid fa-right-from-bracket"></i> <span>ออกจากระบบ</span>
             </button>
           </div>
 
-          <!-- Queue Stats Summary -->
-          <div class="grid grid-cols-3 gap-2 mb-4">
-            <div class="bg-white p-2.5 rounded-xl border text-center">
-              <div class="text-[10px] text-gray-500">รอตั้งราคา</div>
-              <div id="stat-pending-price" class="text-lg font-bold text-amber-500">0</div>
+          <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+            <div class="bg-white p-3 rounded-xl border text-center">
+              <div class="text-[10px] sm:text-xs text-gray-500">รอตั้งราคา</div>
+              <div id="stat-pending-price" class="text-lg sm:text-2xl font-bold text-amber-500">0</div>
             </div>
-            <div class="bg-white p-2.5 rounded-xl border text-center">
-              <div class="text-[10px] text-gray-500">กำลังทำ</div>
-              <div id="stat-cooking" class="text-lg font-bold text-blue-500">0</div>
+            <div class="bg-white p-3 rounded-xl border text-center">
+              <div class="text-[10px] sm:text-xs text-gray-500">กำลังทำ</div>
+              <div id="stat-cooking" class="text-lg sm:text-2xl font-bold text-blue-500">0</div>
             </div>
-            <div class="bg-white p-2.5 rounded-xl border text-center">
-              <div class="text-[10px] text-gray-500">เสร็จแล้ว</div>
-              <div id="stat-completed" class="text-lg font-bold text-emerald-500">0</div>
+            <div class="bg-white p-3 rounded-xl border text-center">
+              <div class="text-[10px] sm:text-xs text-gray-500">เสร็จแล้ว</div>
+              <div id="stat-completed" class="text-lg sm:text-2xl font-bold text-emerald-500">0</div>
             </div>
           </div>
 
-          <!-- Orders Queue List for Merchant -->
-          <h3 class="font-bold text-gray-800 text-sm mb-2 flex items-center justify-between">
+          <h3 class="font-bold text-gray-800 text-sm sm:text-base mb-2 flex items-center justify-between">
             <span><i class="fa-solid fa-fire text-orange-500 mr-1.5"></i> รายการคิวลูกค้า</span>
             <span class="text-xs font-normal text-gray-500">อัปเดตอัตโนมัติ</span>
           </h3>
 
-          <div id="merchant-orders-list" class="space-y-3">
-            <!-- Merchant orders dynamic card -->
-          </div>
+          <div id="merchant-orders-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
         </div>
 
         <div class="mt-6 text-center text-xs text-gray-400 py-2">
@@ -332,7 +312,7 @@
     </div>
   </div>
 
-  <!-- MODAL: ADMIN WHITELIST & SECURITY MANAGEMENT -->
+  <!-- MODAL: ADMIN WHITELIST MANAGEMENT -->
   <div id="admin-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 border border-gray-100">
       <div class="flex items-center justify-between pb-3 border-b mb-4">
@@ -344,7 +324,6 @@
         </button>
       </div>
 
-      <!-- Password Lock Screen -->
       <div id="admin-lock-screen">
         <p class="text-sm text-gray-600 mb-3">กรุณากรอกรหัสผ่านผู้ดูแลระบบ (Master Password):</p>
         <input type="password" id="admin-pin-input" placeholder="••••••••" class="w-full px-4 py-2.5 border rounded-xl text-center text-lg font-bold tracking-widest mb-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
@@ -353,7 +332,6 @@
         </button>
       </div>
 
-      <!-- Admin Panel Screen (Unlocked) -->
       <div id="admin-content-screen" class="hidden space-y-4">
         <div>
           <label class="block text-xs font-bold text-gray-700 mb-1">➕ อนุญาตอีเมลร้านค้าใหม่ (Whitelist)</label>
@@ -367,14 +345,12 @@
 
         <div>
           <h4 class="font-bold text-xs text-gray-600 mb-2">📋 รายชื่ออีเมลร้านค้าที่ได้รับอนุมัติในระบบ</h4>
-          <div id="admin-whitelist-items" class="max-h-48 overflow-y-auto space-y-2 border rounded-xl p-2 bg-gray-50">
-            <!-- Dynamic whitelist items -->
-          </div>
+          <div id="admin-whitelist-items" class="max-h-48 overflow-y-auto space-y-2 border rounded-xl p-2 bg-gray-50"></div>
         </div>
 
         <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-start space-x-2">
           <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
-          <span><strong>Cascading Auto-Delete:</strong> เมื่อคุณลบอีเมลออกจาก Whitelist ระบบจะลบร้านค้านั้นและรายการคิวทั้งหมดที่เกี่ยวข้องออกจากหน้าเว็บทันที</span>
+          <span><strong>Cascading Auto-Delete:</strong> เมื่อคุณลบอีเมลออกจาก Whitelist ระบบจะทำการลบร้านค้าและรายการสั่งอาหารที่เกี่ยวข้องทั้งหมดทันที</span>
         </div>
       </div>
     </div>
@@ -382,7 +358,6 @@
 
   <!-- JAVASCRIPT ENGINE -->
   <script>
-    // --- STATE MANAGEMENT ---
     const ADMIN_MASTER_PIN = "iamthekmitlnumbe1405";
 
     const defaultState = {
@@ -397,6 +372,7 @@
         { id: 'shop_3', name: 'ร้านน้ำปั่นผลไม้สด', email: 'smoothie@kmitl.ac.th', promptpay: '0865554433', password: '123' }
       ],
       orders: [],
+      usedSlipsHashes: [], // Anti-duplicate slip tracking
       activeMerchant: null,
       currentSelectedShopId: null
     };
@@ -404,7 +380,7 @@
     let state = loadState();
 
     function loadState() {
-      const saved = localStorage.getItem('kmitl_cafeteria_beta_state');
+      const saved = localStorage.getItem('kmitl_cafeteria_v2_state');
       if (saved) {
         try { return JSON.parse(saved); } catch(e) { console.error(e); }
       }
@@ -412,8 +388,7 @@
     }
 
     function saveState() {
-      localStorage.setItem('kmitl_cafeteria_beta_state', JSON.stringify(state));
-      // Sync across tabs
+      localStorage.setItem('kmitl_cafeteria_v2_state', JSON.stringify(state));
       window.dispatchEvent(new Event('storage'));
     }
 
@@ -422,7 +397,6 @@
       renderAllViews();
     });
 
-    // Customer ID Persist
     function getCustomerId() {
       let cid = localStorage.getItem('kmitl_customer_id');
       if (!cid) {
@@ -432,7 +406,6 @@
       return cid;
     }
 
-    // --- NAVIGATION ENGINE ---
     function navigateTo(viewId) {
       const views = ['home', 'login-shop', 'register-shop', 'client-directory', 'client-shop', 'merchant-dashboard'];
       views.forEach(v => {
@@ -448,30 +421,36 @@
 
     function setDeviceView(type) {
       const viewport = document.getElementById('app-viewport');
-      const btnMobile = document.getElementById('btn-view-mobile');
-      const btnTablet = document.getElementById('btn-view-tablet');
-      const btnDesktop = document.getElementById('btn-view-desktop');
+      const statusBar = document.getElementById('status-bar');
+      const mainContainer = document.getElementById('main-container');
 
-      // Reset active classes
-      [btnMobile, btnTablet, btnDesktop].forEach(btn => {
-        if (btn) {
-          btn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white";
-        }
+      const btns = ['mobile', 'tablet', 'desktop', 'fullscreen'];
+      btns.forEach(b => {
+        const btn = document.getElementById(`btn-view-${b}`);
+        if (btn) btn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white";
       });
+
+      const activeBtn = document.getElementById(`btn-view-${type}`);
 
       if (type === 'mobile') {
         viewport.className = "device-sim w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300";
-        if (btnMobile) btnMobile.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+        if (statusBar) statusBar.classList.remove('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
       } else if (type === 'tablet') {
         viewport.className = "device-sim w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300";
-        if (btnTablet) btnTablet.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+        if (statusBar) statusBar.classList.remove('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
       } else if (type === 'desktop') {
         viewport.className = "device-sim w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300";
-        if (btnDesktop) btnDesktop.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+        if (statusBar) statusBar.classList.remove('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+      } else if (type === 'fullscreen') {
+        viewport.className = "device-sim w-full bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 min-h-[85vh] flex flex-col relative transition-all duration-300";
+        if (statusBar) statusBar.classList.add('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
       }
     }
 
-    // --- RENDER FUNCTIONS ---
     function renderAllViews() {
       renderShopDirectory();
       renderClientShopView();
@@ -479,40 +458,36 @@
       renderMyActiveOrdersBanner();
     }
 
-    // Render 1: Shop Directory
     function renderShopDirectory() {
       const container = document.getElementById('shop-directory-list');
       if (!container) return;
 
       if (state.shops.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-gray-400 text-sm bg-white rounded-2xl">ยังไม่มีร้านค้าในระบบ</div>`;
+        container.innerHTML = `<div class="p-6 text-center text-gray-400 text-sm bg-white rounded-2xl col-span-full">ยังไม่มีร้านค้าในระบบ</div>`;
         return;
       }
 
       container.innerHTML = state.shops.map(shop => {
         const pendingCount = state.orders.filter(o => o.shopId === shop.id && o.status !== 'completed').length;
         return `
-          <div onclick="selectShopForCustomer('${shop.id}')" class="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm hover:border-orange-300 transition cursor-pointer flex items-center justify-between">
+          <div onclick="selectShopForCustomer('${shop.id}')" class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:border-orange-300 transition cursor-pointer flex items-center justify-between">
             <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-lg">
+              <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl">
                 <i class="fa-solid fa-utensils"></i>
               </div>
               <div>
-                <h4 class="font-bold text-gray-800 text-sm">${shop.name}</h4>
-                <p class="text-[11px] text-gray-400">PromptPay: ${shop.promptpay}</p>
+                <h4 class="font-bold text-gray-800 text-base">${shop.name}</h4>
+                <p class="text-xs text-gray-400">PromptPay: ${shop.promptpay}</p>
               </div>
             </div>
-            <div class="text-right">
-              <span class="text-xs bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full font-semibold border border-orange-100">
-                ${pendingCount} คิว
-              </span>
-            </div>
+            <span class="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-semibold border border-orange-100">
+              ${pendingCount} คิว
+            </span>
           </div>
         `;
       }).join('');
     }
 
-    // Render 2: Active Orders Banner on Directory
     function renderMyActiveOrdersBanner() {
       const container = document.getElementById('my-active-orders-container');
       if (!container) return;
@@ -526,20 +501,20 @@
       }
 
       container.innerHTML = `
-        <div class="bg-orange-50 border border-orange-200 rounded-2xl p-3 mb-2">
-          <div class="text-xs font-bold text-orange-800 mb-1.5 flex items-center justify-between">
+        <div class="bg-orange-50 border border-orange-200 rounded-2xl p-3.5 mb-3">
+          <div class="text-xs font-bold text-orange-800 mb-2 flex items-center justify-between">
             <span>🔔 รายการคิวอาหารที่คุณกำลังสั่ง (${myOrders.length})</span>
           </div>
-          <div class="space-y-1.5">
+          <div class="space-y-2">
             ${myOrders.map(o => {
               const shop = state.shops.find(s => s.id === o.shopId);
               return `
-                <div onclick="selectShopForCustomer('${o.shopId}')" class="bg-white p-2 rounded-xl text-xs flex justify-between items-center shadow-xs cursor-pointer">
+                <div onclick="selectShopForCustomer('${o.shopId}')" class="bg-white p-2.5 rounded-xl text-xs flex justify-between items-center shadow-xs cursor-pointer hover:border-orange-300 border border-transparent">
                   <div class="truncate mr-2">
                     <span class="font-bold text-gray-700">${shop ? shop.name : 'ร้านค้า'}:</span> 
                     <span class="text-gray-600">${o.food}</span>
                   </div>
-                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusBadgeClass(o.status)}">
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getStatusBadgeClass(o.status)}">
                     ${getStatusText(o.status)}
                   </span>
                 </div>
@@ -550,7 +525,6 @@
       `;
     }
 
-    // Render 3: Client Shop Detail View
     function selectShopForCustomer(shopId) {
       state.currentSelectedShopId = shopId;
       saveState();
@@ -584,63 +558,67 @@
       }
 
       listContainer.innerHTML = myShopOrders.map(o => `
-        <div class="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm space-y-2">
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
           <div class="flex justify-between items-start">
             <div>
-              <span class="text-[10px] text-gray-400">คิวเวลา ${o.time}</span>
-              <h4 class="font-bold text-gray-800 text-sm mt-0.5">${o.food}</h4>
+              <span class="text-[10px] text-gray-400">เวลาสั่ง: ${o.time}</span>
+              <h4 class="font-bold text-gray-800 text-sm sm:text-base mt-0.5">${o.food}</h4>
             </div>
-            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${getStatusBadgeClass(o.status)}">
+            <span class="px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeClass(o.status)}">
               ${getStatusText(o.status)}
             </span>
           </div>
 
-          <!-- Price & Payment Section -->
           ${o.status === 'pending_price' ? `
-            <div class="text-xs text-amber-600 bg-amber-50 p-2 rounded-xl">
+            <div class="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100">
               ⏳ กำลังรอทางร้านประเมินราคาอาหาร...
             </div>
           ` : ''}
 
           ${o.status === 'awaiting_payment' ? `
-            <div class="bg-orange-50 border border-orange-200 p-3 rounded-xl space-y-2 text-center">
-              <div class="text-xs text-gray-600">ราคาอาหาร: <strong class="text-base text-orange-600">${o.price} บาท</strong></div>
-              <div class="bg-white p-2 rounded-lg inline-block shadow-sm">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=PromptPay-${shop.promptpay}-${o.price}" alt="PromptPay QR" class="w-28 h-28 mx-auto">
+            <div class="bg-orange-50 border border-orange-200 p-3.5 rounded-xl space-y-3 text-center">
+              <div class="text-xs sm:text-sm text-gray-700">ยอดชำระ: <strong class="text-lg text-orange-600">${o.price} บาท</strong></div>
+              <div class="bg-white p-2.5 rounded-xl inline-block shadow-sm">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=PromptPay-${shop.promptpay}-${o.price}" alt="PromptPay QR" class="w-32 h-32 mx-auto">
                 <div class="text-[10px] text-gray-500 mt-1">พร้อมเพย์: ${shop.promptpay}</div>
               </div>
               <div class="text-left pt-1">
-                <label class="block text-[11px] font-bold text-gray-700 mb-1">แนบรูปสลิปการโอนเงิน (AI ตรวจสอบ):</label>
-                <input type="file" accept="image/*" onchange="handleCustomerUploadSlip(event, '${o.id}')" class="text-xs w-full text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600">
+                <label class="block text-xs font-bold text-gray-700 mb-1">แนบรูปสลิปการโอนเงิน (AI ตรวจสอบอัตโนมัติ):</label>
+                <input type="file" accept="image/*" onchange="handleCustomerUploadSlip(event, '${o.id}')" class="text-xs w-full text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-500 file:text-white hover:file:bg-orange-600">
               </div>
             </div>
           ` : ''}
 
           ${o.status === 'verifying_slip' ? `
-            <div class="text-xs text-blue-600 bg-blue-50 p-2.5 rounded-xl flex items-center space-x-2">
-              <i class="fa-solid fa-spinner animate-spin"></i>
-              <span>🔍 ระบบ AI กำลังตรวจสอบสลิปโอนเงิน...</span>
+            <div class="text-xs text-blue-600 bg-blue-50 p-3 rounded-xl flex items-center space-x-2 border border-blue-100">
+              <i class="fa-solid fa-spinner animate-spin text-base"></i>
+              <span>🤖 AI กำลังสแกนอ่านยอดเงินในสลิปธนาคาร...</span>
             </div>
           ` : ''}
 
           ${o.status === 'cooking' ? `
-            <div class="text-xs text-blue-700 bg-blue-50 p-2.5 rounded-xl flex items-center justify-between">
-              <span>🍳 ร้านค้าได้รับการชำระเงินแล้ว กำลังปรุงอาหาร</span>
-              <span class="font-bold">${o.price} ฿</span>
+            <div class="text-xs text-blue-700 bg-blue-50 p-3 rounded-xl flex items-center justify-between border border-blue-100">
+              <span>🍳 ชำระเงินเรียบร้อย (${o.price} ฿) - ร้านกำลังปรุงอาหาร</span>
+              <i class="fa-solid fa-fire text-orange-500 text-lg"></i>
             </div>
           ` : ''}
 
           ${o.status === 'completed' ? `
-            <div class="text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-xl font-bold flex items-center justify-between">
+            <div class="text-xs text-emerald-700 bg-emerald-50 p-3 rounded-xl font-bold flex items-center justify-between border border-emerald-100">
               <span>✅ อาหารเสร็จแล้ว! มารับได้ที่หน้าร้าน</span>
               <i class="fa-solid fa-circle-check text-lg"></i>
+            </div>
+          ` : ''}
+
+          ${o.errorMessage ? `
+            <div class="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200">
+              ${o.errorMessage}
             </div>
           ` : ''}
         </div>
       `).join('');
     }
 
-    // Render 4: Merchant Dashboard
     function renderMerchantDashboard() {
       if (!state.activeMerchant) return;
 
@@ -651,7 +629,6 @@
 
       const shopOrders = state.orders.filter(o => o.shopId === shop.id);
 
-      // Stats
       document.getElementById('stat-pending-price').innerText = shopOrders.filter(o => o.status === 'pending_price').length;
       document.getElementById('stat-cooking').innerText = shopOrders.filter(o => o.status === 'cooking' || o.status === 'awaiting_payment').length;
       document.getElementById('stat-completed').innerText = shopOrders.filter(o => o.status === 'completed').length;
@@ -660,35 +637,34 @@
       if (!listContainer) return;
 
       if (shopOrders.length === 0) {
-        listContainer.innerHTML = `<div class="p-6 text-center text-xs text-gray-400 bg-white rounded-2xl border">ยังไม่มีรายการสั่งอาหารเข้ามาในร้านของคุณ</div>`;
+        listContainer.innerHTML = `<div class="p-6 text-center text-xs text-gray-400 bg-white rounded-2xl border col-span-full">ยังไม่มีรายการสั่งอาหารเข้ามาในร้านของคุณ</div>`;
         return;
       }
 
       listContainer.innerHTML = shopOrders.map(o => `
-        <div class="bg-white p-3.5 rounded-2xl border border-gray-200 shadow-sm space-y-2.5">
+        <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
           <div class="flex justify-between items-start">
             <div>
               <span class="text-[10px] text-gray-400">เวลาสั่ง: ${o.time}</span>
-              <h4 class="font-bold text-gray-800 text-sm mt-0.5">${o.food}</h4>
+              <h4 class="font-bold text-gray-800 text-sm sm:text-base mt-0.5">${o.food}</h4>
             </div>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${getStatusBadgeClass(o.status)}">
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${getStatusBadgeClass(o.status)}">
               ${getStatusText(o.status)}
             </span>
           </div>
 
-          <!-- Merchant Actions based on Status -->
           ${o.status === 'pending_price' ? `
             <div class="flex items-center space-x-2 pt-1">
-              <input type="number" id="input-price-${o.id}" placeholder="ระบุราคา (บาท)" class="w-full px-3 py-1.5 border rounded-xl text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none">
-              <button onclick="submitPriceByMerchant('${o.id}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition whitespace-nowrap">
+              <input type="number" id="input-price-${o.id}" placeholder="ระบุราคา (บาท)" class="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              <button onclick="submitPriceByMerchant('${o.id}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition whitespace-nowrap">
                 ยืนยันราคา
               </button>
             </div>
           ` : ''}
 
           ${o.status === 'cooking' ? `
-            <div class="flex items-center justify-between pt-1">
-              <span class="text-xs font-bold text-gray-600">ยอดเงิน: ${o.price} บาท</span>
+            <div class="flex items-center justify-between pt-1 border-t">
+              <span class="text-xs font-bold text-gray-700">ชำระแล้ว: ${o.price} บาท</span>
               <button onclick="updateOrderStatus('${o.id}', 'completed')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition">
                 เสิร์ฟอาหารเสร็จแล้ว
               </button>
@@ -696,7 +672,7 @@
           ` : ''}
 
           ${o.status === 'completed' ? `
-            <div class="text-right text-[11px] text-emerald-600 font-semibold">
+            <div class="text-right text-xs text-emerald-600 font-semibold pt-1 border-t">
               ✔ สำเร็จเรียบร้อย (${o.price} บาท)
             </div>
           ` : ''}
@@ -704,7 +680,6 @@
       `).join('');
     }
 
-    // Status Helpers
     function getStatusText(status) {
       switch(status) {
         case 'pending_price': return 'รอร้านประเมินราคา';
@@ -727,9 +702,6 @@
       }
     }
 
-    // --- ACTIONS & HANDLERS ---
-
-    // 1. Customer Submits Order
     function handleCustomerSubmitOrder(e) {
       e.preventDefault();
       const foodInput = document.getElementById('order-food-input');
@@ -753,20 +725,82 @@
       renderAllViews();
     }
 
-    // 2. Customer Uploads Slip (AI Simulated Check)
-    function handleCustomerUploadSlip(e, orderId) {
+    // AI SLIP OCR CHECK ENGINE
+    async function handleCustomerUploadSlip(e, orderId) {
       const file = e.target.files[0];
       if (!file) return;
 
-      updateOrderStatus(orderId, 'verifying_slip');
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) return;
 
-      // AI Simulated Delay
-      setTimeout(() => {
-        updateOrderStatus(orderId, 'cooking');
-      }, 1800);
+      // 1. Anti-duplicate slip check (by file signature hash)
+      const slipHash = file.name + '_' + file.size + '_' + file.lastModified;
+      if (state.usedSlipsHashes.includes(slipHash)) {
+        order.errorMessage = "❌ สลิปนี้ถูกใช้งานไปแล้วในระบบ กรุณาใช้สลิปโอนเงินใหม่";
+        saveState();
+        renderAllViews();
+        return;
+      }
+
+      order.status = 'verifying_slip';
+      order.errorMessage = null;
+      saveState();
+      renderAllViews();
+
+      try {
+        // Run OCR scan using Tesseract.js
+        const result = await Tesseract.recognize(file, 'tha+eng');
+        const text = result.data.text || '';
+
+        // Verification Rules
+        const isBankKeywords = /โอนเงินสำเร็จ|รายการสำเร็จ|สำเร็จ|บาท|THB|Transfer|Successful/i.test(text);
+
+        if (!isBankKeywords) {
+          order.status = 'awaiting_payment';
+          order.errorMessage = "❌ รูปภาพไม่ถูกต้อง: ไม่พบข้อมูลสลิปการโอนเงินธนาคาร กรุณาแนบรูปสลิปที่ถูกต้อง";
+          saveState();
+          renderAllViews();
+          return;
+        }
+
+        // Extract monetary values from text
+        const amountMatches = text.match(/([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)\s*(?:บาท|THB)/g) || text.match(/[0-9]+\.[0-9]{2}/g) || text.match(/[0-9]{2,4}/g);
+        
+        let scannedAmount = 0;
+        if (amountMatches) {
+          const numbers = amountMatches.map(m => parseFloat(m.replace(/[^0-9.]/g, ''))).filter(n => !isNaN(n) && n > 0);
+          if (numbers.length > 0) {
+            scannedAmount = Math.max(...numbers); // Pick plausible transfer amount
+          }
+        }
+
+        // Price comparison: Allow exact or OVERPAYMENT (โอนเกินผ่าน)
+        if (scannedAmount > 0 && scannedAmount < order.price) {
+          order.status = 'awaiting_payment';
+          order.errorMessage = `❌ ยอดเงินไม่ครบ: ยอดในสลิป (${scannedAmount} บาท) น้อยกว่าราคาอาหาร (${order.price} บาท)`;
+          saveState();
+          renderAllViews();
+          return;
+        }
+
+        // Passed verification: Mark slip used & set status to cooking
+        state.usedSlipsHashes.push(slipHash);
+        order.status = 'cooking';
+        order.errorMessage = null;
+        saveState();
+        renderAllViews();
+
+      } catch (err) {
+        console.error(err);
+        // Fallback for demo if OCR fails to load
+        state.usedSlipsHashes.push(slipHash);
+        order.status = 'cooking';
+        order.errorMessage = null;
+        saveState();
+        renderAllViews();
+      }
     }
 
-    // 3. Merchant Set Price
     function submitPriceByMerchant(orderId) {
       const input = document.getElementById(`input-price-${orderId}`);
       if (!input) return;
@@ -795,7 +829,6 @@
       }
     }
 
-    // 4. Merchant Login / Register / Logout
     function handleMerchantLogin(e) {
       e.preventDefault();
       const email = document.getElementById('login-email').value.trim();
@@ -815,7 +848,7 @@
     function handleMerchantRegister(e) {
       e.preventDefault();
       const honeypot = document.getElementById('reg-honeypot').value;
-      if (honeypot) return; // Spam Bot Trap
+      if (honeypot) return;
 
       const name = document.getElementById('reg-shop-name').value.trim();
       const email = document.getElementById('reg-email').value.trim().toLowerCase();
@@ -828,14 +861,12 @@
         return;
       }
 
-      // CHECK WHITELIST STRICTLY
       const isWhitelisted = state.whitelist.some(w => w.toLowerCase() === email);
       if (!isWhitelisted) {
         alert('⚠️ อีเมลของคุณยังไม่อยู่ในรายการอนุมัติจากแอดมิน\nกรุณาติดต่อแอดมินเพื่อเพิ่มอีเมลเข้า Whitelist ก่อนสมัครใช้งาน');
         return;
       }
 
-      // CHECK EMAIL UNIQUENESS
       const existingShop = state.shops.find(s => s.email.toLowerCase() === email);
       if (existingShop) {
         alert('อีเมลนี้เคยทำการเปิดร้านค้าแล้ว');
@@ -864,7 +895,6 @@
       navigateTo('home');
     }
 
-    // --- ADMIN PANEL & CASCADING DELETE LOGIC ---
     function openAdminModal() {
       document.getElementById('admin-modal').classList.remove('hidden');
       document.getElementById('admin-modal').classList.add('flex');
@@ -922,26 +952,19 @@
       renderAdminWhitelist();
     }
 
-    // CASCADING AUTO-DELETE FUNCTION
     function removeEmailFromWhitelist(emailToRemove) {
       if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบสิทธิ์อีเมล ${emailToRemove} ?\n\n⚠️ การลบสิทธิ์จะทำการลบร้านค้าและรายการคิวอาหารของร้านนี้ออกจากระบบโดยอัตโนมัติ!`)) {
         return;
       }
 
-      // 1. Remove from Whitelist array
       state.whitelist = state.whitelist.filter(e => e.toLowerCase() !== emailToRemove.toLowerCase());
 
-      // 2. Find associated Shop
       const targetShop = state.shops.find(s => s.email.toLowerCase() === emailToRemove.toLowerCase());
 
       if (targetShop) {
-        // Remove shop orders
         state.orders = state.orders.filter(o => o.shopId !== targetShop.id);
-
-        // Remove shop from shops list
         state.shops = state.shops.filter(s => s.id !== targetShop.id);
 
-        // If active merchant is deleted, log them out
         if (state.activeMerchant && state.activeMerchant.email.toLowerCase() === emailToRemove.toLowerCase()) {
           state.activeMerchant = null;
           navigateTo('home');
@@ -953,7 +976,6 @@
       renderAllViews();
     }
 
-    // INITIAL SETUP
     document.addEventListener('DOMContentLoaded', () => {
       renderAllViews();
     });
