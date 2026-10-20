@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KMITL Cafeteria - ระบบจองคิวอาหาร สจล.</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Kanit', sans-serif;
+      background-color: #f3f4f6;
+    }
+    .kmitl-orange { background-color: #ff7300; }
+    .kmitl-orange-text { color: #ff7300; }
+    .kmitl-orange-border { border-color: #ff7300; }
+    .kmitl-btn-orange {
+      background-color: #ff7300;
+      color: white;
+      transition: all 0.2s ease;
+    }
+    .kmitl-btn-orange:hover {
+      background-color: #e06500;
+    }
+    .device-sim {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin: 0 auto;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col text-gray-800">
+
+  <!-- DEVICE SIMULATOR BAR -->
+  <div id="simulator-bar" class="bg-gray-900 text-white py-2 px-4 flex flex-wrap items-center justify-between text-sm sticky top-0 z-50 shadow-md">
+    <div class="flex items-center space-x-2 mb-1 sm:mb-0">
+      <span id="cloud-status-dot" class="inline-block w-2.5 h-2.5 rounded-full bg-green-400"></span>
+      <span class="font-semibold text-xs sm:text-sm">KMITL Cafeteria <span id="cloud-status-text" class="text-green-400 text-[11px]">(🟢 Cloud Connected Real-time)</span></span>
+    </div>
+    <div class="flex items-center space-x-1 sm:space-x-2 bg-gray-800 p-1 rounded-lg border border-gray-700">
+      <button onclick="setDeviceView('mobile')" id="btn-view-mobile" class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium">
+        <i class="fa-solid fa-mobile-screen"></i> <span class="hidden sm:inline">มือถือ</span>
+      </button>
+      <button onclick="setDeviceView('tablet')" id="btn-view-tablet" class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white">
+        <i class="fa-solid fa-tablet-screen-button"></i> <span class="hidden sm:inline">iPad</span>
+      </button>
+      <button onclick="setDeviceView('desktop')" id="btn-view-desktop" class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white">
+        <i class="fa-solid fa-laptop"></i> <span class="hidden sm:inline">โน้ตบุ๊ก</span>
+      </button>
+      <button onclick="setDeviceView('fullscreen')" id="btn-view-fullscreen" class="px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white">
+        <i class="fa-solid fa-desktop"></i> <span class="hidden sm:inline">🖥️ เต็มจอ คอมพิวเตอร์</span>
+      </button>
+    </div>
+    <div class="flex items-center space-x-2 text-xs">
+      <button onclick="openAdminModal()" class="bg-gray-700 hover:bg-gray-600 text-orange-300 px-2.5 py-1 rounded border border-orange-500/30 transition flex items-center space-x-1">
+        <i class="fa-solid fa-user-shield"></i>
+        <span>⚙️ ระบบแอดมิน</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="main-container" class="flex-grow p-2 sm:p-4 flex items-center justify-center">
+    <div id="app-viewport" class="device-sim w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300">
+      
+      <!-- STATUS BAR SIMULATION -->
+      <div id="status-bar" class="bg-orange-600 text-white text-xs px-5 py-1.5 flex justify-between items-center font-mono select-none">
+        <span>9:41</span>
+        <div class="flex items-center space-x-1.5">
+          <i class="fa-solid fa-signal text-[10px]"></i>
+          <i class="fa-solid fa-wifi text-[10px]"></i>
+          <i class="fa-solid fa-battery-full text-[11px]"></i>
+        </div>
+      </div>
+
+      <!-- VIEW 1: HOME -->
+      <div id="view-home" class="flex-grow kmitl-orange p-6 flex flex-col justify-between text-white relative">
+        <div class="mt-4 flex justify-center">
+          <div class="bg-white text-gray-900 px-6 py-4 rounded-2xl shadow-xl w-full max-w-[280px] text-center border-2 border-orange-200 transform -rotate-1">
+            <div class="flex items-center justify-center space-x-1">
+              <span class="text-4xl font-black text-orange-600 tracking-tighter">K</span>
+              <span class="text-2xl font-extrabold text-gray-800 tracking-tight">mitl</span>
+            </div>
+            <div class="text-xl font-bold text-gray-700 tracking-wide border-t border-gray-200 mt-1 pt-0.5">Cafeteria</div>
+          </div>
+        </div>
+
+        <div class="my-auto space-y-5 text-center max-w-md mx-auto w-full">
+          <h2 class="text-2xl font-bold tracking-wide drop-shadow-md">Who are you?</h2>
+          
+          <button onclick="navigateTo('login-shop')" class="w-full bg-white text-gray-900 hover:bg-orange-50 font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-between text-xl border-2 border-orange-100 transform active:scale-95 transition">
+            <span class="text-2xl font-bold ml-2">Shop</span>
+            <div class="bg-orange-100 p-2 rounded-xl">
+              <i class="fa-solid fa-cart-shopping text-orange-600 text-2xl"></i>
+            </div>
+          </button>
+
+          <div class="text-lg font-bold text-white/90 my-2">- Or -</div>
+
+          <button onclick="navigateTo('client-directory')" class="w-full bg-white text-gray-900 hover:bg-orange-50 font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-between text-xl border-2 border-orange-100 transform active:scale-95 transition">
+            <span class="text-2xl font-bold ml-2">Client</span>
+            <div class="bg-purple-100 p-2 rounded-xl">
+              <i class="fa-solid fa-headset text-purple-600 text-2xl"></i>
+            </div>
+          </button>
+        </div>
+
+        <div class="text-center text-xs text-orange-200 font-light pb-2">
+          สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง
+        </div>
+      </div>
+
+      <!-- VIEW 2: MERCHANT LOGIN -->
+      <div id="view-login-shop" class="hidden flex-grow kmitl-orange p-6 flex flex-col justify-between text-white relative">
+        <button onclick="navigateTo('home')" class="absolute top-4 left-4 bg-white/20 hover:bg-white/30 text-white rounded-full p-2 w-10 h-10 flex items-center justify-center transition">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <div class="mt-10 text-center">
+          <h1 class="text-4xl font-extrabold tracking-tight drop-shadow-md">Login</h1>
+          <p class="text-orange-100 text-sm mt-1">เข้าสู่ระบบสำหรับร้านค้า</p>
+        </div>
+
+        <form onsubmit="handleMerchantLogin(event)" class="my-auto space-y-4 max-w-md mx-auto w-full">
+          <div>
+            <label class="block text-white text-sm font-semibold mb-1">Email / อีเมลร้านค้า</label>
+            <input type="email" id="login-email" required placeholder="เช่น shop@kmitl.ac.th" class="w-full px-4 py-3 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 font-medium">
+          </div>
+
+          <div>
+            <label class="block text-white text-sm font-semibold mb-1">Password / รหัสผ่าน</label>
+            <input type="password" id="login-password" required placeholder="••••••••" class="w-full px-4 py-3 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 font-medium">
+          </div>
+
+          <button type="submit" class="w-full bg-white text-gray-900 hover:bg-gray-100 font-bold py-3.5 px-6 rounded-xl shadow-lg text-lg transform active:scale-95 transition mt-2">
+            Login
+          </button>
+        </form>
+
+        <div class="text-center space-y-2 mb-4">
+          <p class="text-white text-sm">This is your first time?</p>
+          <button onclick="navigateTo('register-shop')" class="bg-white text-red-600 hover:bg-red-50 font-bold py-2 px-8 rounded-xl shadow-md transition transform active:scale-95">
+            Register
+          </button>
+        </div>
+      </div>
+
+      <!-- VIEW 3: MERCHANT REGISTER -->
+      <div id="view-register-shop" class="hidden flex-grow kmitl-orange p-6 flex flex-col justify-between text-white relative">
+        <button onclick="navigateTo('login-shop')" class="absolute top-4 left-4 bg-white/20 hover:bg-white/30 text-white rounded-full p-2 w-10 h-10 flex items-center justify-center transition">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+
+        <div class="mt-8 text-center">
+          <h1 class="text-3xl font-extrabold tracking-tight drop-shadow-md">Register</h1>
+          <p class="text-orange-100 text-xs mt-1">ลงทะเบียนร้านค้าใหม่ (ต้องผ่าน Whitelist)</p>
+        </div>
+
+        <form onsubmit="handleMerchantRegister(event)" class="my-auto space-y-3 max-w-md mx-auto w-full">
+          <input type="text" id="reg-honeypot" class="hidden" tabindex="-1" autocomplete="off">
+
+          <div>
+            <label class="block text-white text-xs font-semibold mb-1">Name / ชื่อร้านค้า</label>
+            <input type="text" id="reg-shop-name" required placeholder="เช่น ร้านข้าวแกงป้าต๋อย" class="w-full px-4 py-2.5 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 text-sm font-medium">
+          </div>
+
+          <div>
+            <label class="block text-white text-xs font-semibold mb-1">Email / อีเมล (ต้องได้รับอนุมัติจากแอดมิน)</label>
+            <input type="email" id="reg-email" required placeholder="เช่น patoy@kmitl.ac.th" class="w-full px-4 py-2.5 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 text-sm font-medium">
+          </div>
+
+          <div>
+            <label class="block text-white text-xs font-semibold mb-1">PromptPay ID / เบอร์พร้อมเพย์รับเงิน</label>
+            <input type="text" id="reg-promptpay" required placeholder="เช่น 0812345678" class="w-full px-4 py-2.5 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 text-sm font-medium">
+          </div>
+
+          <div>
+            <label class="block text-white text-xs font-semibold mb-1">Password / รหัสผ่าน</label>
+            <input type="password" id="reg-password" required placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 text-sm font-medium">
+          </div>
+
+          <div>
+            <label class="block text-white text-xs font-semibold mb-1">Confirm Password / ยืนยันรหัสผ่าน</label>
+            <input type="password" id="reg-confirm-password" required placeholder="••••••••" class="w-full px-4 py-2.5 rounded-xl text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-300 text-sm font-medium">
+          </div>
+
+          <button type="submit" class="w-full bg-white text-emerald-700 hover:bg-emerald-50 font-extrabold py-3 px-6 rounded-xl shadow-lg text-lg transform active:scale-95 transition mt-3">
+            Done
+          </button>
+        </form>
+
+        <div class="text-center text-xs text-orange-200">
+          * ระบบอนุมัติสิทธิ์เฉพาะอีเมลที่ระบุใน Admin Whitelist
+        </div>
+      </div>
+
+      <!-- VIEW 4: CLIENT SHOP DIRECTORY -->
+      <div id="view-client-directory" class="hidden flex-grow bg-gray-50 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
+        <div>
+          <div class="flex items-center justify-between mb-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
+            <button onclick="navigateTo('home')" class="text-gray-500 hover:text-orange-600 p-2 text-lg">
+              <i class="fa-solid fa-house"></i>
+            </button>
+            <div class="text-center">
+              <h2 class="font-bold text-gray-800 text-base sm:text-lg">เลือกร้านค้าในโรงอาหาร</h2>
+              <p class="text-[11px] text-gray-500">สถาบันเทคโนโลยีพระจอมเกล้าเจ้าคุณทหารลาดกระบัง</p>
+            </div>
+            <div class="w-8"></div>
+          </div>
+
+          <div id="my-active-orders-container" class="mb-4"></div>
+
+          <h3 class="font-bold text-gray-700 text-sm sm:text-base mb-2.5 flex items-center">
+            <i class="fa-solid fa-store text-orange-500 mr-2"></i> ร้านค้าทั้งหมด
+          </h3>
+
+          <div id="shop-directory-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </div>
+
+        <div class="mt-6 text-center text-xs text-gray-400 py-2">
+          กดเลือกร้านค้าเพื่อสั่งอาหารและติดตามคิว
+        </div>
+      </div>
+
+      <!-- VIEW 5: CLIENT ORDER FORM & QUEUE STATUS -->
+      <div id="view-client-shop" class="hidden flex-grow bg-gray-50 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
+        <div>
+          <div class="flex items-center justify-between mb-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
+            <button onclick="navigateTo('client-directory')" class="text-gray-500 hover:text-orange-600 p-2 text-lg">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <div class="text-center">
+              <h2 id="current-shop-title" class="font-bold text-gray-800 text-base sm:text-lg">ชื่อร้านค้า</h2>
+              <p id="current-shop-promptpay" class="text-[11px] text-gray-500">PromptPay: -</p>
+            </div>
+            <span class="bg-orange-100 text-orange-700 text-xs px-2.5 py-1 rounded-full font-semibold">
+              <i class="fa-solid fa-clock mr-1"></i> <span id="current-shop-queue-count">0</span> คิว
+            </span>
+          </div>
+
+          <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-100 mb-4">
+            <h3 class="font-bold text-gray-800 text-sm sm:text-base mb-3 border-b pb-2">🍽️ สั่งอาหารคิวใหม่</h3>
+            <form onsubmit="handleCustomerSubmitOrder(event)" class="space-y-3">
+              <div>
+                <label class="block text-xs sm:text-sm font-semibold text-gray-600 mb-1">เมนูอาหารที่ต้องการสั่ง</label>
+                <textarea id="order-food-input" required rows="2" placeholder="เช่น ข้าวมันไก่เนื้อน่อง ไม่หนัง พิเศษไข่ดาว" class="w-full p-3 border rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"></textarea>
+              </div>
+              <button type="submit" class="w-full kmitl-btn-orange font-bold py-2.5 rounded-xl shadow-md text-sm transition">
+                ส่งรายการสั่งอาหาร
+              </button>
+            </form>
+          </div>
+
+          <div>
+            <h3 class="font-bold text-gray-800 text-sm sm:text-base mb-2.5 flex items-center">
+              <i class="fa-solid fa-list-check text-orange-500 mr-2"></i> คิวอาหารของคุณในร้านนี้
+            </h3>
+            <div id="customer-shop-orders-list" class="space-y-3"></div>
+          </div>
+        </div>
+
+        <div class="mt-4 text-center text-xs text-gray-400 py-2">
+          ระบบซิงค์คิวอัตโนมัติ Real-time Cloud
+        </div>
+      </div>
+
+      <!-- VIEW 6: MERCHANT DASHBOARD -->
+      <div id="view-merchant-dashboard" class="hidden flex-grow bg-gray-100 p-4 sm:p-6 flex flex-col justify-between relative overflow-y-auto no-scrollbar">
+        <div>
+          <div class="flex items-center justify-between mb-4 bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-200">
+            <div>
+              <span class="text-[10px] bg-orange-100 text-orange-700 font-bold px-2 py-0.5 rounded-full">แผงควบคุมร้านค้า</span>
+              <h2 id="merchant-dash-shopname" class="font-bold text-gray-800 text-base sm:text-xl leading-tight mt-0.5">ร้านค้าของคุณ</h2>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button onclick="clearCompletedMerchantOrders()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1 border border-amber-300">
+                <i class="fa-solid fa-broom"></i> <span class="hidden sm:inline">เคลียร์คิวที่เสร็จแล้ว</span>
+              </button>
+              <button onclick="handleMerchantLogout()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1">
+                <i class="fa-solid fa-right-from-bracket"></i> <span class="hidden sm:inline">ออก</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+            <div class="bg-white p-3 rounded-xl border text-center">
+              <div class="text-[10px] sm:text-xs text-gray-500">รอตั้งราคา</div>
+              <div id="stat-pending-price" class="text-lg sm:text-2xl font-bold text-amber-500">0</div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border text-center">
+              <div class="text-[10px] sm:text-xs text-gray-500">กำลังทำ</div>
+              <div id="stat-cooking" class="text-lg sm:text-2xl font-bold text-blue-500">0</div>
+            </div>
+            <div class="bg-white p-3 rounded-xl border text-center">
+              <div class="text-[10px] sm:text-xs text-gray-500">เสร็จแล้ว</div>
+              <div id="stat-completed" class="text-lg sm:text-2xl font-bold text-emerald-500">0</div>
+            </div>
+          </div>
+
+                    <div class="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm mb-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-sm font-bold text-gray-800"><i class="fa-solid fa-sack-dollar text-emerald-600 mr-1"></i> รายได้ที่ยืนยันแล้ว</div>
+                <div id="merchant-revenue-total" class="text-2xl font-extrabold text-emerald-700 mt-1">฿0.00</div>
+                <div id="merchant-revenue-orders" class="text-xs text-gray-500 mt-1">0 รายการที่ชำระแล้ว</div>
+              </div>
+              <div class="text-right">
+                <label for="merchant-revenue-date" class="block text-[11px] font-semibold text-gray-500 mb-1">เลือกวันที่</label>
+                <input id="merchant-revenue-date" type="date" onchange="renderMerchantRevenue()" class="max-w-[145px] px-2 py-2 border rounded-lg text-xs">
+              </div>
+            </div>
+            <p class="text-[10px] text-gray-400 mt-2">นับจากยอดที่ร้านยืนยันแล้วเท่านั้น · แยกตามวันที่ยืนยันรับเงิน</p>
+          </div>
+<h3 class="font-bold text-gray-800 text-sm sm:text-base mb-2 flex items-center justify-between">
+            <span><i class="fa-solid fa-fire text-orange-500 mr-1.5"></i> รายการคิวลูกค้า</span>
+            <button onclick="clearCompletedMerchantOrders()" class="text-xs text-orange-600 font-bold hover:underline sm:hidden">
+              🧹 เคลียร์คิวเสร็จแล้ว
+            </button>
+          </h3>
+
+          <div id="merchant-orders-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+
+        <div class="mt-6 text-center text-xs text-gray-400 py-2">
+          KMITL Cafeteria Merchant Console
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: ADMIN WHITELIST MANAGEMENT -->
+  <div id="admin-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 border border-gray-100">
+      <div class="flex items-center justify-between pb-3 border-b mb-4">
+        <h3 class="font-bold text-gray-800 text-lg flex items-center">
+          <i class="fa-solid fa-user-shield text-orange-500 mr-2"></i> แผงควบคุมแอดมิน (Admin)
+        </h3>
+        <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div id="admin-lock-screen">
+        <p class="text-sm text-gray-600 mb-3">กรุณากรอกรหัสผ่านผู้ดูแลระบบ (Master Password):</p>
+        <input type="password" id="admin-pin-input" placeholder="••••••••" class="w-full px-4 py-2.5 border rounded-xl text-center text-lg font-bold tracking-widest mb-3 focus:ring-2 focus:ring-orange-500 focus:outline-none">
+        <button onclick="unlockAdminPanel()" class="w-full kmitl-btn-orange font-bold py-2.5 rounded-xl shadow-md transition">
+          เข้าสู่ระบบแอดมิน
+        </button>
+      </div>
+
+      <div id="admin-content-screen" class="hidden space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">➕ อนุญาตอีเมลร้านค้าใหม่ (Whitelist)</label>
+          <div class="flex space-x-2">
+            <input type="email" id="admin-new-email-input" placeholder="เช่น patoy@kmitl.ac.th" class="flex-grow px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none">
+            <button onclick="addEmailToWhitelist()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition">
+              + อนุญาต
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-xs text-gray-600 mb-2">📋 รายชื่ออีเมลร้านค้าที่ได้รับอนุมัติในระบบ</h4>
+          <div id="admin-whitelist-items" class="max-h-48 overflow-y-auto space-y-2 border rounded-xl p-2 bg-gray-50"></div>
+        </div>
+
+        <button onclick="forceResetCloudData()" class="w-full bg-red-100 hover:bg-red-200 text-red-700 font-bold py-2 rounded-xl text-xs transition border border-red-300">
+          🔄 ล้างแคชรีเซ็ต Cloud Data ทั้งหมด
+        </button>
+
+        <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-start space-x-2">
+          <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
+          <span><strong>Cascading Auto-Delete:</strong> เมื่อคุณลบอีเมลออกจาก Whitelist ระบบจะทำการลบร้านค้าและรายการสั่งอาหารที่เกี่ยวข้องทั้งหมดในคลาวด์ทันที</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT CLOUD-FIRST ENGINE -->
+  <script>
+    const ADMIN_MASTER_PIN = "iamthekmitlnumbe1405";
+    const SUPABASE_URL = "https://yidslponybssumfuobgz.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SgVVH5nGJ6O1ZpX9XWhsxg_RVhxK0sW";
+    const SUPABASE_STATE_URL = `${SUPABASE_URL}/rest/v1/app_state`;
+
+    const defaultState = {
+      whitelist: [
+        "patoy@kmitl.ac.th",
+        "noodle@kmitl.ac.th",
+        "smoothie@kmitl.ac.th"
+      ],
+      shops: [],
+      orders: [],
+      usedSlipsHashes: [],
+      sales: []
+    };
+
+    let state = defaultState;
+    let activeMerchant = loadActiveMerchant();
+    let currentSelectedShopId = localStorage.getItem('kmitl_current_shop_id') || null;
+
+    function loadActiveMerchant() {
+      const saved = localStorage.getItem('kmitl_active_merchant');
+      if (saved) {
+        try { return JSON.parse(saved); } catch(e) {}
+      }
+      return null;
+    }
+
+    function navigateTo(viewId) {
+      const views = ['home', 'login-shop', 'register-shop', 'client-directory', 'client-shop', 'merchant-dashboard'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.add('hidden');
+      });
+
+      const target = document.getElementById(`view-${viewId}`);
+      if (target) target.classList.remove('hidden');
+
+      renderAllViews();
+    }
+
+        let cloudWriteInProgress = false;
+    let cloudPollInProgress = false;
+    let cloudPollTimer = null;
+    let lastCloudStateJson = null;
+
+    function supabaseHeaders(extraHeaders = {}) {
+      return {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'Content-Type': 'application/json',
+        ...extraHeaders
+      };
+    }
+
+    async function saveState() {
+      renderAllViews();
+      if (cloudWriteInProgress) {
+        window.setTimeout(saveState, 150);
+        return;
+      }
+
+      cloudWriteInProgress = true;
+      const stateJson = JSON.stringify(state);
+      try {
+        const response = await fetch(`${SUPABASE_STATE_URL}?on_conflict=id`, {
+          method: 'POST',
+          headers: supabaseHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+          body: JSON.stringify({ id: 'cafeteria', payload: JSON.parse(stateJson), updated_at: new Date().toISOString() })
+        });
+        if (!response.ok) {
+          const details = await response.text();
+          throw new Error(`Supabase HTTP ${response.status}: ${details}`);
+        }
+        lastCloudStateJson = stateJson;
+        localStorage.setItem('kmitl_cafeteria_v11_local', stateJson);
+        updateCloudStatus(true);
+      } catch (err) {
+        console.error('Supabase save failed:', err);
+        updateCloudStatus(false, 'บันทึก Supabase ไม่สำเร็จ');
+      } finally {
+        cloudWriteInProgress = false;
+      }
+    }
+
+    async function fetchFromCloud() {
+      if (cloudPollInProgress || cloudWriteInProgress) return;
+      cloudPollInProgress = true;
+
+      try {
+        const response = await fetch(`${SUPABASE_STATE_URL}?id=eq.cafeteria&select=payload`, {
+          method: 'GET',
+          headers: supabaseHeaders(),
+          cache: 'no-store'
+        });
+        if (!response.ok) {
+          const details = await response.text();
+          throw new Error(`Supabase HTTP ${response.status}: ${details}`);
+        }
+
+        const rows = await response.json();
+        if (rows.length > 0 && rows[0].payload) {
+          const cloudData = rows[0].payload;
+          const nextState = {
+            whitelist: Array.isArray(cloudData.whitelist) ? cloudData.whitelist : [],
+            shops: Array.isArray(cloudData.shops) ? cloudData.shops : [],
+            orders: Array.isArray(cloudData.orders) ? cloudData.orders : [],
+            usedSlipsHashes: Array.isArray(cloudData.usedSlipsHashes) ? cloudData.usedSlipsHashes : []
+          };
+          const nextJson = JSON.stringify(nextState);
+          if (nextJson !== lastCloudStateJson) {
+            state = nextState;
+            lastCloudStateJson = nextJson;
+            localStorage.setItem('kmitl_cafeteria_v11_local', nextJson);
+            renderAllViews();
+          }
+        } else {
+          // Initialize the shared row once; the default shop list is empty.
+          updateCloudStatus(true);
+        }
+        updateCloudStatus(true);
+      } catch (err) {
+        console.error('Supabase read failed:', err);
+        updateCloudStatus(false, 'เชื่อมต่อ Supabase ไม่ได้');
+      } finally {
+        cloudPollInProgress = false;
+      }
+    }
+function updateCloudStatus(isOnline, message) {
+      const dot = document.getElementById('cloud-status-dot');
+      const text = document.getElementById('cloud-status-text');
+      if (!dot || !text) return;
+
+      if (isOnline) {
+        dot.className = 'inline-block w-2.5 h-2.5 rounded-full bg-green-400';
+        text.className = 'text-green-400 text-[11px]';
+        text.innerText = '(🟢 Cloud Connected · Syncing)';
+      } else {
+        dot.className = 'inline-block w-2.5 h-2.5 rounded-full bg-red-400';
+        text.className = 'text-red-400 text-[11px]';
+        text.innerText = `(🔴 ${message || 'Cloud offline'})`;
+      }
+    }
+
+    // Supabase REST is polled here, so poll every
+    // 2 seconds. The in-progress guard prevents overlapping requests.
+    function startCloudPolling() {
+      if (cloudPollTimer) window.clearInterval(cloudPollTimer);
+      cloudPollTimer = window.setInterval(fetchFromCloud, 2000);
+    }
+
+    function setDeviceView(type) {
+      const viewport = document.getElementById('app-viewport');
+      const statusBar = document.getElementById('status-bar');
+
+      const btns = ['mobile', 'tablet', 'desktop', 'fullscreen'];
+      btns.forEach(b => {
+        const btn = document.getElementById(`btn-view-${b}`);
+        if (btn) btn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 text-gray-300 hover:text-white";
+      });
+
+      const activeBtn = document.getElementById(`btn-view-${type}`);
+
+      if (type === 'mobile') {
+        viewport.className = "device-sim w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300";
+        if (statusBar) statusBar.classList.remove('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+      } else if (type === 'tablet') {
+        viewport.className = "device-sim w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300";
+        if (statusBar) statusBar.classList.remove('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+      } else if (type === 'desktop') {
+        viewport.className = "device-sim w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-gray-900 min-h-[680px] flex flex-col relative transition-all duration-300";
+        if (statusBar) statusBar.classList.remove('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+      } else if (type === 'fullscreen') {
+        viewport.className = "device-sim w-full bg-white rounded-2xl shadow-md overflow-hidden border border-gray-200 min-h-[85vh] flex flex-col relative transition-all duration-300";
+        if (statusBar) statusBar.classList.add('hidden');
+        if (activeBtn) activeBtn.className = "px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 bg-orange-500 text-white font-medium";
+      }
+    }
+
+    function getCustomerId() {
+      let cid = localStorage.getItem('kmitl_customer_id');
+      if (!cid) {
+        cid = 'cust_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('kmitl_customer_id', cid);
+      }
+      return cid;
+    }
+
+    function renderAllViews() {
+      renderShopDirectory();
+      renderClientShopView();
+      renderMerchantDashboard();
+      renderMyActiveOrdersBanner();
+    }
+
+    function renderShopDirectory() {
+      const container = document.getElementById('shop-directory-list');
+      if (!container) return;
+
+      if (!state.shops || state.shops.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-gray-400 text-sm bg-white rounded-2xl col-span-full">ยังไม่มีร้านค้าในระบบ</div>`;
+        return;
+      }
+
+      container.innerHTML = state.shops.map(shop => {
+        const pendingCount = (state.orders || []).filter(o => o.shopId === shop.id && o.status !== 'completed' && o.status !== 'cancelled').length;
+        return `
+          <div onclick="selectShopForCustomer('${shop.id}')" class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:border-orange-300 transition cursor-pointer flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xl">
+                <i class="fa-solid fa-utensils"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-gray-800 text-base">${shop.name}</h4>
+                <p class="text-xs text-gray-400">PromptPay: ${shop.promptpay}</p>
+              </div>
+            </div>
+            <span class="text-xs bg-orange-50 text-orange-600 px-3 py-1 rounded-full font-semibold border border-orange-100">
+              ${pendingCount} คิว
+            </span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderMyActiveOrdersBanner() {
+      const container = document.getElementById('my-active-orders-container');
+      if (!container) return;
+
+      const myId = getCustomerId();
+      const myOrders = (state.orders || []).filter(o => o.customerId === myId && o.status !== 'completed' && o.status !== 'cancelled');
+
+      if (myOrders.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="bg-orange-50 border border-orange-200 rounded-2xl p-3.5 mb-3">
+          <div class="text-xs font-bold text-orange-800 mb-2 flex items-center justify-between">
+            <span>🔔 รายการคิวอาหารที่คุณกำลังสั่ง (${myOrders.length})</span>
+          </div>
+          <div class="space-y-2">
+            ${myOrders.map(o => {
+              const shop = (state.shops || []).find(s => s.id === o.shopId);
+              return `
+                <div onclick="selectShopForCustomer('${o.shopId}')" class="bg-white p-2.5 rounded-xl text-xs flex justify-between items-center shadow-xs cursor-pointer hover:border-orange-300 border border-transparent">
+                  <div class="truncate mr-2">
+                    <span class="font-bold text-gray-700">${shop ? shop.name : 'ร้านค้า'}:</span> 
+                    <span class="text-gray-600">${o.food}</span>
+                  </div>
+                  <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getStatusBadgeClass(o.status)}">
+                    ${getStatusText(o.status)}
+                  </span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function selectShopForCustomer(shopId) {
+      currentSelectedShopId = shopId;
+      localStorage.setItem('kmitl_current_shop_id', shopId);
+      navigateTo('client-shop');
+    }
+
+    function renderClientShopView() {
+      if (!currentSelectedShopId) return;
+
+      const shop = (state.shops || []).find(s => s.id === currentSelectedShopId);
+      if (!shop) {
+        navigateTo('client-directory');
+        return;
+      }
+
+      document.getElementById('current-shop-title').innerText = shop.name;
+      document.getElementById('current-shop-promptpay').innerText = `PromptPay: ${shop.promptpay}`;
+
+      const activeQueue = (state.orders || []).filter(o => o.shopId === shop.id && o.status !== 'completed' && o.status !== 'cancelled').length;
+      document.getElementById('current-shop-queue-count').innerText = activeQueue;
+
+      const myId = getCustomerId();
+      const myShopOrders = (state.orders || []).filter(o => o.shopId === shop.id && o.customerId === myId);
+
+      const listContainer = document.getElementById('customer-shop-orders-list');
+      if (!listContainer) return;
+
+      if (myShopOrders.length === 0) {
+        listContainer.innerHTML = `<div class="p-4 text-center text-xs text-gray-400 bg-white rounded-xl border">คุณยังไม่มีคิวสั่งอาหารในร้านนี้</div>`;
+        return;
+      }
+
+      listContainer.innerHTML = myShopOrders.map(o => {
+        const cleanPromptPay = shop.promptpay.replace(/[^0-9]/g, '');
+        const qrUrl = `https://promptpay.io/${cleanPromptPay}/${o.price}.png`;
+
+        return `
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-[10px] text-gray-400">เวลาสั่ง: ${o.time}</span>
+              <h4 class="font-bold text-gray-800 text-sm sm:text-base mt-0.5">${o.food}</h4>
+            </div>
+            <span class="px-3 py-1 rounded-full text-xs font-bold ${getStatusBadgeClass(o.status)}">
+              ${getStatusText(o.status)}
+            </span>
+          </div>
+
+          ${o.status === 'pending_price' ? `
+            <div class="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-xl border border-amber-100 flex justify-between items-center">
+              <span>⏳ กำลังรอทางร้านประเมินราคาอาหาร...</span>
+              <button onclick="requestCancelOrder('${o.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold underline ml-2">ขอยกเลิก</button>
+            </div>
+          ` : ''}
+
+          ${o.status === 'awaiting_payment' ? `
+            <div class="bg-orange-50 border border-orange-200 p-3.5 rounded-xl space-y-3 text-center">
+              <div class="text-xs sm:text-sm text-gray-700 flex justify-between items-center">
+                <span>ยอดชำระ: <strong class="text-lg text-orange-600">${o.price} บาท</strong></span>
+                <button onclick="requestCancelOrder('${o.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold underline">ขอยกเลิก</button>
+              </div>
+              <div class="bg-white p-3 rounded-xl inline-block shadow-sm">
+                <img src="${qrUrl}" alt="PromptPay QR Code" class="w-36 h-36 mx-auto border p-1 rounded-lg">
+                <div class="text-[11px] font-bold text-gray-700 mt-1.5"><i class="fa-solid fa-qrcode text-orange-500"></i> สแกนจ่ายด้วยแอปธนาคาร</div>
+                <div class="text-[10px] text-gray-500">พร้อมเพย์: ${shop.promptpay}</div>
+              </div>
+              <div class="text-left pt-1 space-y-2">
+                <p class="text-xs text-gray-600">หลังโอนแล้วกดแจ้งร้าน ร้านจะตรวจยอดเงินจริงในบัญชีก่อนเริ่มทำอาหาร การแนบรูปสลิปอย่างเดียวไม่ถือว่าชำระสำเร็จ</p>
+                <button onclick="markPaymentForReview('${o.id}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-xl text-sm transition">
+                  แจ้งชำระเงินแล้ว ให้ร้านตรวจสอบ
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+                    ${o.status === 'payment_review' ? `
+            <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-800 space-y-2">
+              <div class="font-bold">⏳ แจ้งชำระแล้ว — รอร้านตรวจยอดเงินจริง</div>
+              <div>ร้านจะเริ่มทำอาหารเมื่อยืนยันว่าเงินเข้าครบ ${o.price} บาท</div>
+              <button onclick="requestCancelOrder('${o.id}')" class="text-red-600 font-bold underline">ขอยกเลิก</button>
+            </div>
+          ` : ''}
+${o.status === 'cooking' ? `
+            <div class="text-xs text-blue-700 bg-blue-50 p-3 rounded-xl flex items-center justify-between border border-blue-100">
+              <span>🍳 ชำระเงินเรียบร้อย (${o.price} ฿) - ร้านกำลังปรุงอาหาร</span>
+              <button onclick="requestCancelOrder('${o.id}')" class="text-xs text-red-500 hover:text-red-700 font-bold underline">ขอยกเลิก</button>
+            </div>
+          ` : ''}
+
+          ${o.status === 'request_cancel' ? `
+            <div class="text-xs text-amber-700 bg-amber-50 p-3 rounded-xl border border-amber-200">
+              ⏳ ส่งคำขอยกเลิกเรียบร้อยแล้ว กำลังรอร้านค้ากดยืนยันอนุมัติ...
+            </div>
+          ` : ''}
+
+          ${o.status === 'completed' ? `
+            <div class="text-xs text-emerald-700 bg-emerald-50 p-3 rounded-xl font-bold flex items-center justify-between border border-emerald-100">
+              <span>✅ อาหารเสร็จแล้ว! มารับได้ที่หน้าร้าน</span>
+              <i class="fa-solid fa-circle-check text-lg"></i>
+            </div>
+          ` : ''}
+
+          ${o.status === 'cancelled' ? `
+            <div class="text-xs text-gray-500 bg-gray-100 p-3 rounded-xl font-medium border border-gray-200">
+              ❌ รายการนี้ถูกยกเลิกแล้ว
+            </div>
+          ` : ''}
+
+          ${o.errorMessage ? `
+            <div class="text-xs text-red-600 bg-red-50 p-2.5 rounded-xl border border-red-200 font-medium">
+${o.errorMessage}
+            </div>
+          ` : ''}
+        </div>
+      `;
+      }).join('');
+    }
+
+    function getBangkokDateKey(value = new Date()) {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(date);
+      const part = Object.fromEntries(parts.map(p => [p.type, p.value]));
+      return `${part.year}-${part.month}-${part.day}`;
+    }
+
+    function renderMerchantRevenue() {
+      const totalEl = document.getElementById('merchant-revenue-total');
+      const countEl = document.getElementById('merchant-revenue-orders');
+      const dateInput = document.getElementById('merchant-revenue-date');
+      if (!totalEl || !countEl || !dateInput || !activeMerchant) return;
+
+      if (!dateInput.value) dateInput.value = getBangkokDateKey();
+      const selectedDate = dateInput.value;
+      const dailySales = (state.sales || []).filter(sale =>
+        sale.shopId === activeMerchant.shopId &&
+        !sale.refundedAt &&
+        sale.paidAt &&
+        getBangkokDateKey(sale.paidAt) === selectedDate
+      );
+      const total = dailySales.reduce((sum, sale) => sum + Number(sale.amount || 0), 0);
+      totalEl.textContent = `฿${new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total)}`;
+      countEl.textContent = `${dailySales.length} รายการที่ชำระแล้ว`;
+    }
+    function renderMerchantDashboard() {
+      if (!activeMerchant) return;
+
+      const shop = (state.shops || []).find(s => s.id === activeMerchant.shopId);
+      if (!shop) return;
+
+      document.getElementById('merchant-dash-shopname').innerText = shop.name;
+
+      const shopOrders = (state.orders || []).filter(o => o.shopId === shop.id);
+
+      document.getElementById('stat-pending-price').innerText = shopOrders.filter(o => o.status === 'pending_price').length;
+      document.getElementById('stat-cooking').innerText = shopOrders.filter(o => o.status === 'cooking' || o.status === 'request_cancel').length;
+      document.getElementById('stat-completed').innerText = shopOrders.filter(o => o.status === 'completed').length;
+      renderMerchantRevenue();
+
+      const listContainer = document.getElementById('merchant-orders-list');
+      if (!listContainer) return;
+
+      if (shopOrders.length === 0) {
+        listContainer.innerHTML = `<div class="p-6 text-center text-xs text-gray-400 bg-white rounded-2xl border col-span-full">ยังไม่มีรายการสั่งอาหารเข้ามาในร้านของคุณ</div>`;
+        return;
+      }
+
+      listContainer.innerHTML = shopOrders.map(o => `
+        <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-[10px] text-gray-400">เวลาสั่ง: ${o.time}</span>
+              <h4 class="font-bold text-gray-800 text-sm sm:text-base mt-0.5">${o.food}</h4>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${getStatusBadgeClass(o.status)}">
+              ${getStatusText(o.status)}
+            </span>
+          </div>
+
+          ${o.status === 'pending_price' ? `
+            <div class="flex items-center space-x-2 pt-1">
+              <input type="number" id="input-price-${o.id}" placeholder="ระบุราคา (บาท)" class="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-orange-500 focus:outline-none">
+              <button onclick="submitPriceByMerchant('${o.id}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition whitespace-nowrap">
+                ยืนยันราคา
+              </button>
+            </div>
+          ` : ''}
+
+                    ${o.status === 'payment_review' ? `
+            <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs space-y-2">
+              <div class="font-bold text-amber-800">⚠️ ลูกค้าแจ้งชำระ ${o.price} บาท — ตรวจยอดเงินจริงในบัญชีก่อนยืนยัน</div>
+              <label class="block text-gray-700">ยอดเงินจริงที่เข้าบัญชี (บาท)</label>
+              <div class="flex space-x-2">
+                <input type="number" min="0" step="0.01" id="input-paid-${o.id}" placeholder="ยอดที่ตรวจพบ" class="min-w-0 flex-1 px-3 py-2 border rounded-lg">
+                <button onclick="verifyPaymentByMerchant('${o.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg">ยืนยันยอดเข้า</button>
+              </div>
+              <button onclick="rejectPaymentByMerchant('${o.id}')" class="text-red-600 font-bold underline">ยังไม่พบยอด / ยอดไม่ครบ — ส่งกลับให้ชำระใหม่</button>
+            </div>
+          ` : ''}
+${o.status === 'request_cancel' ? `
+            <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs space-y-2">
+              <div class="font-bold text-amber-800">⚠️ ลูกค้าส่งคำขอยกเลิกออเดอร์นี้</div>
+              <div class="flex space-x-2">
+                <button onclick="approveCancelOrderByMerchant('${o.id}', true)" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-1.5 rounded-lg transition">
+                  ✅ อนุมัติการยกเลิก
+                </button>
+                <button onclick="approveCancelOrderByMerchant('${o.id}', false)" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-1.5 rounded-lg transition">
+                  ❌ ปฏิเสธการยกเลิก
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          ${o.status === 'cooking' ? `
+            <div class="flex items-center justify-between pt-1 border-t">
+              <span class="text-xs font-bold text-gray-700">ชำระแล้ว: ${o.price} บาท</span>
+              <button onclick="updateOrderStatus('${o.id}', 'completed')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition">
+                เสิร์ฟอาหารเสร็จแล้ว
+              </button>
+            </div>
+          ` : ''}
+
+          ${o.status === 'completed' ? `
+            <div class="text-right text-xs text-emerald-600 font-semibold pt-1 border-t">
+              ✔ สำเร็จเรียบร้อย (${o.price} บาท)
+            </div>
+          ` : ''}
+
+          ${o.status === 'cancelled' ? `
+            <div class="text-right text-xs text-gray-400 pt-1 border-t">
+              ❌ ยกเลิกแล้ว
+            </div>
+          ` : ''}
+                  ${o.status === 'pending_price' || o.status === 'awaiting_payment' ? `
+            <div class="flex justify-end pt-2 border-t">
+              <button onclick="deleteUnpaidOrder('${o.id}')" class="text-xs font-bold text-red-600 hover:text-red-800 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-lg transition">
+                🗑️ ลบออเดอร์ที่ไม่ชำระ
+              </button>
+            </div>
+          ` : ''}</div>
+      `).join('');
+    }
+
+    function deleteUnpaidOrder(orderId) {
+      if (!activeMerchant) return;
+      const order = (state.orders || []).find(o => String(o.id) === String(orderId));
+      const deletableStatuses = ['pending_price', 'awaiting_payment'];
+      if (!order || order.shopId !== activeMerchant.shopId || !deletableStatuses.includes(order.status)) {
+        alert('ลบได้เฉพาะออเดอร์ของร้านคุณที่ยังรอตั้งราคาหรือรอชำระเงินเท่านั้น');
+        return;
+      }
+      if (!confirm(`ยืนยันลบออเดอร์ “${order.food || 'ออเดอร์นี้'}” ที่ยังไม่ชำระเงิน? การลบนี้จะนำรายการออกจากระบบทุกเครื่อง`)) return;
+      state.orders = (state.orders || []).filter(o => String(o.id) !== String(orderId));
+      saveState();
+    }
+    function clearCompletedMerchantOrders() {
+      if (!activeMerchant) return;
+      const shopId = activeMerchant.shopId;
+
+      const countToClear = (state.orders || []).filter(o => o.shopId === shopId && (o.status === 'completed' || o.status === 'cancelled')).length;
+
+      if (countToClear === 0) {
+        alert('ไม่มีรายการคิวที่เสร็จแล้วหรือยกเลิกแล้วให้เคลียร์');
+        return;
+      }
+
+      if (confirm(`คุณต้องการลบประวัติคิวที่เสร็จสมบูรณ์/ยกเลิกแล้ว จำนวน ${countToClear} รายการ ออกจากระบบคลาวด์หรือไม่?`)) {
+        state.orders = state.orders.filter(o => !(o.shopId === shopId && (o.status === 'completed' || o.status === 'cancelled')));
+        saveState();
+      }
+    }
+
+    function forceResetCloudData() {
+      if (confirm("คุณแน่ใจหรือไม่ที่จะรีเซ็ต Cloud Data ให้กลับไปใช้ค่าเริ่มต้นบนทุกเครื่อง?")) {
+        state = defaultState;
+        localStorage.clear();
+        saveState();
+        alert("รีเซ็ต Cloud Data สำเร็จ ทุกเครื่องจะถูกอัปเดตตามในอีกสักครู่");
+      }
+    }
+
+    function getStatusText(status) {
+      switch(status) {
+        case 'pending_price': return 'รอร้านประเมินราคา';
+        case 'awaiting_payment': return 'รอโอนเงิน';
+        case 'payment_review': return 'รอตรวจยอดชำระ';
+        case 'cooking': return 'กำลังปรุงอาหาร';
+        case 'request_cancel': return 'รอยืนยันการยกเลิก';
+        case 'completed': return 'เสร็จเรียบร้อย';
+        case 'cancelled': return 'ยกเลิกแล้ว';
+        default: return status;
+      }
+    }
+
+    function getStatusBadgeClass(status) {
+      switch(status) {
+        case 'pending_price': return 'bg-amber-100 text-amber-700';
+        case 'awaiting_payment': return 'bg-orange-100 text-orange-700';
+        case 'payment_review': return 'bg-amber-100 text-amber-700';
+        case 'cooking': return 'bg-blue-100 text-blue-700';
+        case 'request_cancel': return 'bg-purple-100 text-purple-700';
+        case 'completed': return 'bg-emerald-100 text-emerald-700';
+        case 'cancelled': return 'bg-gray-100 text-gray-700';
+        default: return 'bg-gray-100 text-gray-700';
+      }
+    }
+
+    function handleCustomerSubmitOrder(e) {
+      e.preventDefault();
+      const myId = getCustomerId();
+
+      const activeOrders = (state.orders || []).filter(o => o.customerId === myId && o.status !== 'completed' && o.status !== 'cancelled');
+      if (activeOrders.length >= 3) {
+        alert('⚠️ คุณมีรายการคิวอาหารค้างในระบบเกิน 3 รายการแล้ว\nกรุณารอให้อาหารเสร็จ หรือยกเลิกรายการเดิมก่อนสั่งเพิ่ม');
+        return;
+      }
+
+      const foodInput = document.getElementById('order-food-input');
+      const foodText = foodInput.value.trim();
+
+      if (!foodText || !currentSelectedShopId) return;
+
+      const newOrder = {
+        id: 'ord_' + Math.random().toString(36).substr(2, 9),
+        shopId: currentSelectedShopId,
+        customerId: myId,
+        food: foodText,
+        price: null,
+        previousStatus: null,
+        status: 'pending_price',
+        time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      if (!state.orders) state.orders = [];
+      state.orders.unshift(newOrder);
+      saveState();
+      foodInput.value = '';
+    }
+
+    function requestCancelOrder(orderId) {
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      if (!confirm('คุณต้องการส่งคำขอยกเลิกออเดอร์นี้ไปยังร้านค้าหรือไม่?')) return;
+
+      order.previousStatus = order.status;
+      order.status = 'request_cancel';
+      saveState();
+    }
+
+    function approveCancelOrderByMerchant(orderId, isApproved) {
+      const order = state.orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      if (isApproved) {
+        order.status = 'cancelled';
+        if (order.paidAmount && Array.isArray(state.sales)) {
+          const sale = state.sales.find(item => item.orderId === order.id);
+          if (sale) sale.refundedAt = new Date().toISOString();
+        }
+      } else {
+        order.status = order.previousStatus || 'cooking';
+      }
+      saveState();
+    }
+
+        function markPaymentForReview(orderId) {
+      const order = (state.orders || []).find(o => o.id === orderId);
+      if (!order || order.status !== 'awaiting_payment' || !Number.isFinite(Number(order.price)) || Number(order.price) <= 0) return;
+      if (!confirm(`คุณโอนเงิน ${order.price} บาทแล้วใช่ไหม? ร้านจะตรวจยอดเงินจริงในบัญชีก่อนยืนยัน`)) return;
+      order.status = 'payment_review';
+      order.paymentSubmittedAt = new Date().toISOString();
+      order.errorMessage = null;
+      saveState();
+    }
+
+    function verifyPaymentByMerchant(orderId) {
+      const order = (state.orders || []).find(o => o.id === orderId);
+      if (!activeMerchant || !order || order.shopId !== activeMerchant.shopId || order.status !== 'payment_review') return;
+      const input = document.getElementById(`input-paid-${orderId}`);
+      const paidAmount = Number(input && input.value);
+      const requiredAmount = Number(order.price);
+      if (!Number.isFinite(paidAmount) || paidAmount <= 0) { alert('กรุณากรอกยอดเงินจริงที่ตรวจพบในบัญชี'); return; }
+      if (paidAmount + 0.001 < requiredAmount) {
+        alert(`ยอดที่ตรวจพบ ${paidAmount.toFixed(2)} บาท ยังไม่ครบ ${requiredAmount.toFixed(2)} บาท จึงยังยืนยันการชำระไม่ได้`);
+        return;
+      }
+      if (!confirm(`ยืนยันว่าตรวจพบเงินเข้า ${paidAmount.toFixed(2)} บาทในบัญชีร้านแล้วใช่ไหม?`)) return;
+      order.paidAmount = paidAmount;
+      order.paymentVerifiedAt = new Date().toISOString();
+      if (!state.sales) state.sales = [];
+      if (!state.sales.some(sale => sale.orderId === order.id)) {
+        state.sales.push({ orderId: order.id, shopId: order.shopId, amount: paidAmount, paidAt: order.paymentVerifiedAt, refundedAt: null });
+      }
+      order.status = 'cooking';
+      order.errorMessage = null;
+      saveState();
+    }
+
+    function rejectPaymentByMerchant(orderId) {
+      const order = (state.orders || []).find(o => o.id === orderId);
+      if (!activeMerchant || !order || order.shopId !== activeMerchant.shopId || order.status !== 'payment_review') return;
+      if (!confirm('ยังไม่พบยอดโอนหรือยอดไม่ครบใช่ไหม? รายการจะกลับไปรอชำระเงิน')) return;
+      order.status = 'awaiting_payment';
+      order.paymentSubmittedAt = null;
+      order.errorMessage = 'ร้านยังยืนยันยอดเงินไม่ได้ กรุณาตรวจยอดและแจ้งชำระอีกครั้ง';
+      saveState();
+    }
+function submitPriceByMerchant(orderId) {
+      const input = document.getElementById(`input-price-${orderId}`);
+      if (!input) return;
+
+      const priceVal = parseFloat(input.value);
+      if (isNaN(priceVal) || priceVal <= 0) {
+        alert('กรุณากรอกราคาให้ถูกต้อง');
+        return;
+      }
+
+      const order = state.orders.find(o => o.id === orderId);
+      if (order) {
+        order.price = priceVal;
+        order.status = 'awaiting_payment';
+        saveState();
+      }
+    }
+
+    function updateOrderStatus(orderId, newStatus) {
+      const order = state.orders.find(o => o.id === orderId);
+      if (order) {
+        order.status = newStatus;
+        saveState();
+      }
+    }
+
+    function handleMerchantLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-password').value.trim();
+
+      const shop = (state.shops || []).find(s => s.email.toLowerCase() === email.toLowerCase() && s.password === pass);
+
+      if (shop) {
+        activeMerchant = { shopId: shop.id, email: shop.email };
+        localStorage.setItem('kmitl_active_merchant', JSON.stringify(activeMerchant));
+        navigateTo('merchant-dashboard');
+      } else {
+        alert('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+      }
+    }
+
+    function handleMerchantRegister(e) {
+      e.preventDefault();
+      const honeypot = document.getElementById('reg-honeypot').value;
+      if (honeypot) return;
+
+      const name = document.getElementById('reg-shop-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim().toLowerCase();
+      const promptpay = document.getElementById('reg-promptpay').value.trim();
+      const pass = document.getElementById('reg-password').value;
+      const confirmPass = document.getElementById('reg-confirm-password').value;
+
+      if (pass !== confirmPass) {
+        alert('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
+        return;
+      }
+
+      const isWhitelisted = (state.whitelist || []).some(w => w.toLowerCase() === email);
+      if (!isWhitelisted) {
+        alert('⚠️ อีเมลของคุณยังไม่อยู่ในรายการอนุมัติจากแอดมิน\nกรุณาติดต่อแอดมินเพื่อเพิ่มอีเมลเข้า Whitelist ก่อนสมัครใช้งาน');
+        return;
+      }
+
+      const existingShop = (state.shops || []).find(s => s.email.toLowerCase() === email);
+      if (existingShop) {
+        alert('อีเมลนี้เคยทำการเปิดร้านค้าแล้ว');
+        return;
+      }
+
+      const newShop = {
+        id: 'shop_' + Math.random().toString(36).substr(2, 9),
+        name,
+        email,
+        promptpay,
+        password: pass
+      };
+
+      if (!state.shops) state.shops = [];
+      state.shops.push(newShop);
+
+      activeMerchant = { shopId: newShop.id, email: newShop.email };
+      localStorage.setItem('kmitl_active_merchant', JSON.stringify(activeMerchant));
+      
+      saveState();
+
+      alert('ลงทะเบียนร้านค้าสำเร็จ!');
+      navigateTo('merchant-dashboard');
+    }
+
+    function handleMerchantLogout() {
+      activeMerchant = null;
+      localStorage.removeItem('kmitl_active_merchant');
+      navigateTo('home');
+    }
+
+    function openAdminModal() {
+      document.getElementById('admin-modal').classList.remove('hidden');
+      document.getElementById('admin-modal').classList.add('flex');
+    }
+
+    function closeAdminModal() {
+      document.getElementById('admin-modal').classList.add('hidden');
+      document.getElementById('admin-modal').classList.remove('flex');
+    }
+
+    function unlockAdminPanel() {
+      const pin = document.getElementById('admin-pin-input').value;
+      if (pin === ADMIN_MASTER_PIN) {
+        document.getElementById('admin-lock-screen').classList.add('hidden');
+        document.getElementById('admin-content-screen').classList.remove('hidden');
+        renderAdminWhitelist();
+      } else {
+        alert('รหัสผ่านผู้ดูแลระบบไม่ถูกต้อง');
+      }
+    }
+
+    function renderAdminWhitelist() {
+      const container = document.getElementById('admin-whitelist-items');
+      if (!container) return;
+
+      if (!state.whitelist || state.whitelist.length === 0) {
+        container.innerHTML = `<div class="text-xs text-gray-400 p-2 text-center">ไม่มีอีเมลในระบบ</div>`;
+        return;
+      }
+
+      container.innerHTML = state.whitelist.map(email => `
+        <div class="flex items-center justify-between bg-white p-2 rounded-lg border text-xs">
+          <span class="font-medium text-gray-700">${email}</span>
+          <button onclick="removeEmailFromWhitelist('${email}')" class="text-red-500 hover:text-red-700 font-bold px-2 py-0.5 rounded hover:bg-red-50 transition">
+            <i class="fa-solid fa-trash-can mr-1"></i> ลบสิทธิ์ & ลบร้าน
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function addEmailToWhitelist() {
+      const input = document.getElementById('admin-new-email-input');
+      const email = input.value.trim().toLowerCase();
+
+      if (!email) return;
+
+      if (!state.whitelist) state.whitelist = [];
+
+      if (state.whitelist.includes(email)) {
+        alert('อีเมลนี้อยู่ในรายการอนุมัติอยู่แล้ว');
+        return;
+      }
+
+      state.whitelist.push(email);
+      saveState();
+      input.value = '';
+      renderAdminWhitelist();
+    }
+
+    function removeEmailFromWhitelist(emailToRemove) {
+      if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบสิทธิ์อีเมล ${emailToRemove} ?\n\n⚠️ การลบสิทธิ์จะทำการลบร้านค้าและรายการคิวอาหารของร้านนี้ออกจากระบบคลาวด์โดยอัตโนมัติ!`)) {
+        return;
+      }
+
+      state.whitelist = state.whitelist.filter(e => e.toLowerCase() !== emailToRemove.toLowerCase());
+
+      const targetShop = (state.shops || []).find(s => s.email.toLowerCase() === emailToRemove.toLowerCase());
+
+      if (targetShop) {
+        state.orders = (state.orders || []).filter(o => o.shopId !== targetShop.id);
+        state.shops = (state.shops || []).filter(s => s.id !== targetShop.id);
+
+        if (activeMerchant && activeMerchant.email.toLowerCase() === emailToRemove.toLowerCase()) {
+          handleMerchantLogout();
+        }
+      }
+
+      saveState();
+      renderAdminWhitelist();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchFromCloud().then(() => {
+        renderAllViews();
+        startCloudPolling();
+      });
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+
+
